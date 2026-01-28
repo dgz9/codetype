@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #1a1a2e;
+  --foreground: #eaeaea;
+  --correct: #10b981;
+  --incorrect: #ef4444;
+  --cursor: #8b5cf6;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.char-correct {
+  color: var(--correct);
+}
+
+.char-incorrect {
+  color: var(--incorrect);
+  text-decoration: underline;
+}
+
+.char-current {
+  background: var(--cursor);
+  color: white;
+  animation: blink 1s infinite;
+}
+
+.char-pending {
+  color: #6b7280;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.code-display {
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+}
