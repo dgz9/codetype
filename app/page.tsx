@@ -5,6 +5,13 @@ import { getRandomSnippet, languages, type Language, type Snippet } from '@/lib/
 
 type CharState = 'correct' | 'incorrect' | 'current' | 'pending';
 
+interface HighScore {
+  wpm: number;
+  accuracy: number;
+  language: string;
+  date: string;
+}
+
 export default function Home() {
   const [snippet, setSnippet] = useState<Snippet | null>(null);
   const [language, setLanguage] = useState<Language | undefined>(undefined);
@@ -14,7 +21,17 @@ export default function Home() {
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
   const [isFocused, setIsFocused] = useState(false);
+  const [highScore, setHighScore] = useState<HighScore | null>(null);
+  const [isNewHighScore, setIsNewHighScore] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Load high score from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('codetype-highscore');
+    if (saved) {
+      setHighScore(JSON.parse(saved));
+    }
+  }, []);
 
   const startNewGame = useCallback(() => {
     setSnippet(getRandomSnippet(language));
@@ -23,6 +40,7 @@ export default function Home() {
     setEndTime(null);
     setWpm(0);
     setAccuracy(100);
+    setIsNewHighScore(false);
   }, [language]);
 
   useEffect(() => {
@@ -67,13 +85,31 @@ export default function Home() {
         
         const timeMinutes = (end - (startTime || end)) / 60000;
         const words = snippet.code.length / 5;
-        setWpm(Math.round(words / timeMinutes));
+        const finalWpm = Math.round(words / timeMinutes);
+        setWpm(finalWpm);
 
         let correct = 0;
         for (let i = 0; i < newInput.length; i++) {
           if (newInput[i] === snippet.code[i]) correct++;
         }
-        setAccuracy(Math.round((correct / snippet.code.length) * 100));
+        const finalAccuracy = Math.round((correct / snippet.code.length) * 100);
+        setAccuracy(finalAccuracy);
+
+        // Check for high score (must have at least 80% accuracy)
+        if (finalAccuracy >= 80) {
+          const currentBest = highScore?.wpm || 0;
+          if (finalWpm > currentBest) {
+            const newHigh: HighScore = {
+              wpm: finalWpm,
+              accuracy: finalAccuracy,
+              language: snippet.language,
+              date: new Date().toISOString()
+            };
+            setHighScore(newHigh);
+            setIsNewHighScore(true);
+            localStorage.setItem('codetype-highscore', JSON.stringify(newHigh));
+          }
+        }
       }
     }
   }, [snippet, input, startTime, endTime]);
@@ -102,6 +138,12 @@ export default function Home() {
             <span className="text-white">Type</span>
           </h1>
           <p className="text-zinc-500">Type real code. Get faster. Ship more.</p>
+          {highScore && (
+            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20">
+              <span className="text-yellow-400">🏆</span>
+              <span className="text-yellow-400 text-sm font-medium">Best: {highScore.wpm} WPM</span>
+            </div>
+          )}
         </div>
 
         {/* Language Selector */}
@@ -222,13 +264,14 @@ export default function Home() {
         {endTime && (
           <div className="mt-8 text-center completion-enter">
             <div className="text-4xl mb-4">
-              {accuracy >= 95 ? '🎉' : accuracy >= 80 ? '👍' : '💪'}
+              {isNewHighScore ? '🏆' : accuracy >= 95 ? '🎉' : accuracy >= 80 ? '👍' : '💪'}
             </div>
             <p className="text-xl font-medium text-white mb-2">
-              {accuracy >= 95 ? 'Perfect!' : accuracy >= 80 ? 'Nice work!' : 'Keep practicing!'}
+              {isNewHighScore ? 'New High Score!' : accuracy >= 95 ? 'Perfect!' : accuracy >= 80 ? 'Nice work!' : 'Keep practicing!'}
             </p>
             <p className="text-zinc-500 mb-6">
               {wpm} WPM with {accuracy}% accuracy
+              {isNewHighScore && <span className="text-yellow-400 ml-2">★ Personal Best!</span>}
             </p>
             <button
               onClick={startNewGame}
