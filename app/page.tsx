@@ -13,6 +13,7 @@ export default function Home() {
   const [endTime, setEndTime] = useState<number | null>(null);
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
+  const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const startNewGame = useCallback(() => {
@@ -35,7 +36,6 @@ export default function Home() {
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!snippet || endTime) return;
 
-    // Start timer on first keypress
     if (!startTime && e.key.length === 1) {
       setStartTime(Date.now());
     }
@@ -61,17 +61,14 @@ export default function Home() {
       const newInput = input + e.key;
       setInput(newInput);
 
-      // Check if completed
       if (newInput.length === snippet.code.length) {
         const end = Date.now();
         setEndTime(end);
         
-        // Calculate WPM (words = chars / 5)
         const timeMinutes = (end - (startTime || end)) / 60000;
         const words = snippet.code.length / 5;
         setWpm(Math.round(words / timeMinutes));
 
-        // Calculate accuracy
         let correct = 0;
         for (let i = 0; i < newInput.length; i++) {
           if (newInput[i] === snippet.code[i]) correct++;
@@ -88,119 +85,174 @@ export default function Home() {
     return input[index] === snippet?.code[index] ? 'correct' : 'incorrect';
   };
 
+  const progress = snippet ? Math.round((input.length / snippet.code.length) * 100) : 0;
+
   if (!snippet) return null;
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-4xl sm:text-5xl font-bold mb-2">
-          <span className="text-purple-400">Code</span>
-          <span className="text-white">Type</span>
-        </h1>
-        <p className="text-gray-400">Type real code. Get faster.</p>
-      </div>
-
-      {/* Language Selector */}
-      <div className="flex flex-wrap justify-center gap-2 mb-6">
-        <button
-          onClick={() => { setLanguage(undefined); }}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            !language ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-          }`}
-        >
-          All
-        </button>
-        {languages.map((lang) => (
-          <button
-            key={lang.id}
-            onClick={() => setLanguage(lang.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              language === lang.id ? 'text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-            }`}
-            style={language === lang.id ? { backgroundColor: lang.color } : {}}
-          >
-            {lang.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Typing Area */}
-      <div
-        ref={containerRef}
-        tabIndex={0}
-        onKeyDown={handleKeyDown}
-        className="w-full max-w-3xl bg-gray-900/80 backdrop-blur border border-gray-700 rounded-xl p-6 sm:p-8 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-text"
-      >
-        {/* Snippet Info */}
-        <div className="flex justify-between items-center mb-4 text-sm text-gray-400">
-          <span>{snippet.name}</span>
-          <span className={`px-2 py-1 rounded ${
-            snippet.difficulty === 'easy' ? 'bg-green-900 text-green-300' :
-            snippet.difficulty === 'medium' ? 'bg-yellow-900 text-yellow-300' :
-            'bg-red-900 text-red-300'
-          }`}>
-            {snippet.difficulty}
-          </span>
+    <main className="min-h-screen bg-grid relative">
+      {/* Subtle gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/5 via-transparent to-pink-900/5 pointer-events-none" />
+      
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl sm:text-5xl font-bold mb-2 tracking-tight">
+            <span className="text-purple-400">Code</span>
+            <span className="text-white">Type</span>
+          </h1>
+          <p className="text-zinc-500">Type real code. Get faster. Ship more.</p>
         </div>
 
-        {/* Code Display */}
-        <pre className="code-display text-lg sm:text-xl whitespace-pre-wrap break-all">
-          {snippet.code.split('').map((char, i) => (
-            <span
-              key={i}
-              className={`char-${getCharState(i)}`}
+        {/* Language Selector */}
+        <div className="flex flex-wrap justify-center gap-1 mb-6 p-1 bg-zinc-900/50 rounded-xl border border-zinc-800">
+          <button
+            onClick={() => setLanguage(undefined)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              !language 
+                ? 'bg-zinc-800 text-white' 
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            All
+          </button>
+          {languages.map((lang) => (
+            <button
+              key={lang.id}
+              onClick={() => setLanguage(lang.id)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                language === lang.id 
+                  ? 'bg-zinc-800 text-white' 
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
             >
-              {char}
-            </span>
+              <span 
+                className="w-2 h-2 rounded-full" 
+                style={{ backgroundColor: lang.color }}
+              />
+              {lang.name}
+            </button>
           ))}
-        </pre>
+        </div>
+
+        {/* Main Typing Area */}
+        <div
+          ref={containerRef}
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          className="typing-area w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 sm:p-8 focus:outline-none cursor-text glow-purple"
+        >
+          {/* Snippet Header */}
+          <div className="flex justify-between items-center mb-4 pb-4 border-b border-zinc-800">
+            <div className="flex items-center gap-3">
+              <span 
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: languages.find(l => l.id === snippet.language)?.color }}
+              />
+              <span className="text-zinc-400 text-sm font-medium">{snippet.name}</span>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+              snippet.difficulty === 'easy' ? 'badge-easy' :
+              snippet.difficulty === 'medium' ? 'badge-medium' :
+              'badge-hard'
+            }`}>
+              {snippet.difficulty}
+            </span>
+          </div>
+
+          {/* Code Display */}
+          <pre className="code-container text-lg sm:text-xl whitespace-pre-wrap break-all min-h-[120px]">
+            {snippet.code.split('').map((char, i) => (
+              <span key={i} className={`char-${getCharState(i)}`}>
+                {char}
+              </span>
+            ))}
+          </pre>
+
+          {/* Progress Bar */}
+          <div className="mt-6 pt-4 border-t border-zinc-800">
+            <div className="flex justify-between text-xs text-zinc-500 mb-2">
+              <span>Progress</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div 
+                className="progress-bar h-full rounded-full"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Focus hint */}
+          {!isFocused && !startTime && (
+            <div className="absolute inset-0 bg-zinc-900/80 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-zinc-400 mb-2">Click here to start typing</p>
+                <p className="text-zinc-600 text-sm">
+                  <kbd className="kbd">Tab</kbd> for indent • <kbd className="kbd">Enter</kbd> for newline
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Stats */}
         {startTime && (
-          <div className="mt-6 pt-4 border-t border-gray-700 flex justify-center gap-8 text-center">
-            <div>
-              <div className="text-2xl font-bold text-purple-400">{wpm || '—'}</div>
-              <div className="text-xs text-gray-500">WPM</div>
+          <div className="grid grid-cols-3 gap-4 mt-6 w-full max-w-md">
+            <div className="stat-card rounded-xl p-4 text-center">
+              <div className="text-3xl font-bold text-purple-400">{wpm || '—'}</div>
+              <div className="text-xs text-zinc-500 mt-1">WPM</div>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-green-400">{accuracy}%</div>
-              <div className="text-xs text-gray-500">Accuracy</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-blue-400">
-                {Math.round((input.length / snippet.code.length) * 100)}%
+            <div className="stat-card rounded-xl p-4 text-center">
+              <div className={`text-3xl font-bold ${accuracy >= 95 ? 'text-green-400' : accuracy >= 80 ? 'text-yellow-400' : 'text-red-400'}`}>
+                {accuracy}%
               </div>
-              <div className="text-xs text-gray-500">Progress</div>
+              <div className="text-xs text-zinc-500 mt-1">Accuracy</div>
+            </div>
+            <div className="stat-card rounded-xl p-4 text-center">
+              <div className="text-3xl font-bold text-pink-400">{progress}%</div>
+              <div className="text-xs text-zinc-500 mt-1">Complete</div>
             </div>
           </div>
         )}
-      </div>
 
-      {/* Completion Screen */}
-      {endTime && (
-        <div className="mt-6 text-center">
-          <div className="text-2xl mb-4">
-            {accuracy >= 95 ? '🎉 Perfect!' : accuracy >= 80 ? '👍 Nice!' : '💪 Keep practicing!'}
+        {/* Completion */}
+        {endTime && (
+          <div className="mt-8 text-center completion-enter">
+            <div className="text-4xl mb-4">
+              {accuracy >= 95 ? '🎉' : accuracy >= 80 ? '👍' : '💪'}
+            </div>
+            <p className="text-xl font-medium text-white mb-2">
+              {accuracy >= 95 ? 'Perfect!' : accuracy >= 80 ? 'Nice work!' : 'Keep practicing!'}
+            </p>
+            <p className="text-zinc-500 mb-6">
+              {wpm} WPM with {accuracy}% accuracy
+            </p>
+            <button
+              onClick={startNewGame}
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium text-white transition-all hover:scale-105"
+            >
+              Next Snippet →
+            </button>
           </div>
-          <button
-            onClick={startNewGame}
-            className="px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-lg font-medium transition-all"
-          >
-            Next Snippet →
-          </button>
-        </div>
-      )}
+        )}
 
-      {/* Instructions */}
-      {!startTime && (
-        <p className="mt-6 text-gray-500 text-sm">Click the box and start typing</p>
-      )}
-
-      {/* Footer */}
-      <footer className="mt-12 text-center text-gray-500 text-sm">
-        <p>Made with 🦞 by <a href="https://luke-lobster-site.vercel.app" className="text-purple-400 hover:text-purple-300">Luke</a></p>
-      </footer>
+        {/* Footer */}
+        <footer className="mt-12 text-center">
+          <p className="text-zinc-600 text-sm">
+            Made with 🦞 by{' '}
+            <a 
+              href="https://luke-lobster-site.vercel.app" 
+              className="text-purple-400 hover:text-purple-300"
+              target="_blank"
+            >
+              Luke
+            </a>
+          </p>
+        </footer>
+      </div>
     </main>
   );
 }
