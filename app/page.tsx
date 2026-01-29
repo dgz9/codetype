@@ -12,6 +12,14 @@ interface HighScore {
   date: string;
 }
 
+type TimedMode = null | 30 | 60 | 120;
+
+interface TimedStats {
+  totalChars: number;
+  correctChars: number;
+  snippetsCompleted: number;
+}
+
 export default function Home() {
   const [snippet, setSnippet] = useState<Snippet | null>(null);
   const [language, setLanguage] = useState<Language | undefined>(undefined);
@@ -23,7 +31,12 @@ export default function Home() {
   const [isFocused, setIsFocused] = useState(false);
   const [highScore, setHighScore] = useState<HighScore | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
+  const [timedMode, setTimedMode] = useState<TimedMode>(null);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [timedStats, setTimedStats] = useState<TimedStats>({ totalChars: 0, correctChars: 0, snippetsCompleted: 0 });
+  const [timedEnded, setTimedEnded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load high score from localStorage
   useEffect(() => {
@@ -41,7 +54,54 @@ export default function Home() {
     setWpm(0);
     setAccuracy(100);
     setIsNewHighScore(false);
+    setTimedEnded(false);
   }, [language]);
+
+  // Start timed challenge
+  const startTimedChallenge = useCallback((seconds: TimedMode) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimedMode(seconds);
+    setTimeRemaining(seconds);
+    setTimedStats({ totalChars: 0, correctChars: 0, snippetsCompleted: 0 });
+    setTimedEnded(false);
+    startNewGame();
+    if (seconds) {
+      timerRef.current = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev === null || prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            setTimedEnded(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  }, [startNewGame]);
+
+  // Auto-advance to next snippet in timed mode
+  const advanceToNextSnippet = useCallback(() => {
+    if (snippet && timedMode && !timedEnded) {
+      let correct = 0;
+      for (let i = 0; i < input.length; i++) {
+        if (input[i] === snippet.code[i]) correct++;
+      }
+      setTimedStats(prev => ({
+        totalChars: prev.totalChars + input.length,
+        correctChars: prev.correctChars + correct,
+        snippetsCompleted: prev.snippetsCompleted + 1
+      }));
+      setSnippet(getRandomSnippet(language));
+      setInput('');
+    }
+  }, [snippet, timedMode, timedEnded, input, language]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     startNewGame();
@@ -52,7 +112,7 @@ export default function Home() {
   }, [snippet]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!snippet || endTime) return;
+    if (!snippet || endTime || timedEnded) return;
 
     if (!startTime && e.key.length === 1) {
       setStartTime(Date.now());
@@ -80,6 +140,23 @@ export default function Home() {
       setInput(newInput);
 
       if (newInput.length === snippet.code.length) {
+        // Timed mode: auto-advance to next snippet
+        if (timedMode && !timedEnded) {
+          let correct = 0;
+          for (let i = 0; i < newInput.length; i++) {
+            if (newInput[i] === snippet.code[i]) correct++;
+          }
+          setTimedStats(prev => ({
+            totalChars: prev.totalChars + newInput.length,
+            correctChars: prev.correctChars + correct,
+            snippetsCompleted: prev.snippetsCompleted + 1
+          }));
+          setSnippet(getRandomSnippet(language));
+          setInput('');
+          return;
+        }
+
+        // Normal mode: show completion
         const end = Date.now();
         setEndTime(end);
         
@@ -112,7 +189,7 @@ export default function Home() {
         }
       }
     }
-  }, [snippet, input, startTime, endTime]);
+  }, [snippet, input, startTime, endTime, timedMode, timedEnded, language, highScore]);
 
   const getCharState = (index: number): CharState => {
     if (index >= input.length) {
@@ -145,6 +222,49 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* Mode Selector - Timed Challenges */}
+        <div className="flex flex-wrap justify-center gap-2 mb-4">
+          <button
+            onClick={() => { setTimedMode(null); if (timerRef.current) clearInterval(timerRef.current); setTimeRemaining(null); setTimedEnded(false); startNewGame(); }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              !timedMode 
+                ? 'bg-purple-600 text-white' 
+                : 'bg-zinc-800 text-zinc-400 hover:text-white'
+            }`}
+          >
+            📝 Practice
+          </button>
+          {[30, 60, 120].map((seconds) => (
+            <button
+              key={seconds}
+              onClick={() => startTimedChallenge(seconds as TimedMode)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                timedMode === seconds 
+                  ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white' 
+                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
+              }`}
+            >
+              ⏱️ {seconds}s
+            </button>
+          ))}
+        </div>
+
+        {/* Timer Display */}
+        {timedMode && timeRemaining !== null && (
+          <div className={`mb-4 px-6 py-3 rounded-xl text-center ${
+            timeRemaining <= 10 
+              ? 'bg-red-500/20 border border-red-500/30 animate-pulse' 
+              : 'bg-orange-500/20 border border-orange-500/30'
+          }`}>
+            <div className={`text-3xl font-bold font-mono ${timeRemaining <= 10 ? 'text-red-400' : 'text-orange-400'}`}>
+              {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+            </div>
+            <div className="text-xs text-zinc-400 mt-1">
+              {timedStats.snippetsCompleted} snippets • {timedStats.totalChars} chars
+            </div>
+          </div>
+        )}
 
         {/* Language Selector */}
         <div className="flex flex-wrap justify-center gap-1 mb-6 p-1 bg-zinc-900/50 rounded-xl border border-zinc-800">
@@ -260,8 +380,51 @@ export default function Home() {
           </div>
         )}
 
-        {/* Completion */}
-        {endTime && (
+        {/* Timed Challenge Completion */}
+        {timedEnded && timedMode && (
+          <div className="mt-8 text-center completion-enter">
+            <div className="text-5xl mb-4">⏱️</div>
+            <p className="text-2xl font-bold text-white mb-2">Time's Up!</p>
+            <div className="grid grid-cols-3 gap-4 max-w-md mx-auto my-6">
+              <div className="bg-zinc-800/50 rounded-xl p-4">
+                <div className="text-2xl font-bold text-orange-400">
+                  {timedStats.totalChars > 0 ? Math.round((timedStats.totalChars / 5) / (timedMode / 60)) : 0}
+                </div>
+                <div className="text-xs text-zinc-500">WPM</div>
+              </div>
+              <div className="bg-zinc-800/50 rounded-xl p-4">
+                <div className="text-2xl font-bold text-green-400">
+                  {timedStats.totalChars > 0 ? Math.round((timedStats.correctChars / timedStats.totalChars) * 100) : 0}%
+                </div>
+                <div className="text-xs text-zinc-500">Accuracy</div>
+              </div>
+              <div className="bg-zinc-800/50 rounded-xl p-4">
+                <div className="text-2xl font-bold text-pink-400">{timedStats.snippetsCompleted}</div>
+                <div className="text-xs text-zinc-500">Snippets</div>
+              </div>
+            </div>
+            <p className="text-zinc-500 mb-6">
+              {timedStats.totalChars} characters typed in {timedMode} seconds
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => startTimedChallenge(timedMode)}
+                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-400 hover:to-pink-400 rounded-xl font-medium text-white transition-all hover:scale-105"
+              >
+                🔄 Try Again
+              </button>
+              <button
+                onClick={() => { setTimedMode(null); setTimeRemaining(null); setTimedEnded(false); startNewGame(); }}
+                className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-medium text-white transition-all"
+              >
+                Practice Mode
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Normal Completion */}
+        {endTime && !timedMode && (
           <div className="mt-8 text-center completion-enter">
             <div className="text-4xl mb-4">
               {isNewHighScore ? '🏆' : accuracy >= 95 ? '🎉' : accuracy >= 80 ? '👍' : '💪'}
