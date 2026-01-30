@@ -201,12 +201,21 @@ export const snippets: Snippet[] = [
   },
 ];
 
-export function getRandomSnippet(language?: Language, difficulty?: string): Snippet {
+export type Difficulty = 'easy' | 'medium' | 'hard';
+
+export function getRandomSnippet(language?: Language, difficulty?: Difficulty): Snippet {
   let filtered = snippets;
   if (language) filtered = filtered.filter(s => s.language === language);
   if (difficulty) filtered = filtered.filter(s => s.difficulty === difficulty);
+  if (filtered.length === 0) filtered = snippets; // Fallback if no match
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
+
+export const difficulties: { id: Difficulty; label: string; color: string }[] = [
+  { id: 'easy', label: 'Easy', color: '#22c55e' },
+  { id: 'medium', label: 'Medium', color: '#eab308' },
+  { id: 'hard', label: 'Hard', color: '#ef4444' },
+];
 
 export const languages: { id: Language; name: string; color: string }[] = [
   { id: 'javascript', name: 'JavaScript', color: '#f7df1e' },

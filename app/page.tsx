@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getRandomSnippet, languages, type Language, type Snippet } from '@/lib/snippets';
+import { getRandomSnippet, languages, difficulties, type Language, type Difficulty, type Snippet } from '@/lib/snippets';
 
 interface LeaderboardEntry {
   id: number;
@@ -33,6 +33,7 @@ interface TimedStats {
 export default function Home() {
   const [snippet, setSnippet] = useState<Snippet | null>(null);
   const [language, setLanguage] = useState<Language | undefined>(undefined);
+  const [difficulty, setDifficulty] = useState<Difficulty | undefined>(undefined);
   const [input, setInput] = useState('');
   const [startTime, setStartTime] = useState<number | null>(null);
   const [endTime, setEndTime] = useState<number | null>(null);
@@ -112,7 +113,7 @@ export default function Home() {
   }, []);
 
   const startNewGame = useCallback(() => {
-    setSnippet(getRandomSnippet(language));
+    setSnippet(getRandomSnippet(language, difficulty));
     setInput('');
     setStartTime(null);
     setEndTime(null);
@@ -120,7 +121,7 @@ export default function Home() {
     setAccuracy(100);
     setIsNewHighScore(false);
     setTimedEnded(false);
-  }, [language]);
+  }, [language, difficulty]);
 
   // Start timed challenge
   const startTimedChallenge = useCallback((seconds: TimedMode) => {
@@ -158,10 +159,10 @@ export default function Home() {
         correctChars: prev.correctChars + correct,
         snippetsCompleted: prev.snippetsCompleted + 1
       }));
-      setSnippet(getRandomSnippet(language));
+      setSnippet(getRandomSnippet(language, difficulty));
       setInput('');
     }
-  }, [snippet, timedMode, timedEnded, input, language]);
+  }, [snippet, timedMode, timedEnded, input, language, difficulty]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -218,7 +219,7 @@ export default function Home() {
             correctChars: prev.correctChars + correct,
             snippetsCompleted: prev.snippetsCompleted + 1
           }));
-          setSnippet(getRandomSnippet(language));
+          setSnippet(getRandomSnippet(language, difficulty));
           setInput('');
           return;
         }
@@ -417,6 +418,37 @@ export default function Home() {
                 style={{ backgroundColor: lang.color }}
               />
               {lang.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Difficulty Selector */}
+        <div className="flex flex-wrap justify-center gap-1 mb-6 p-1 bg-zinc-900/50 rounded-xl border border-zinc-800">
+          <button
+            onClick={() => { setDifficulty(undefined); setTimeout(() => containerRef.current?.focus(), 0); }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              !difficulty 
+                ? 'bg-zinc-800 text-white' 
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Any Difficulty
+          </button>
+          {difficulties.map((diff) => (
+            <button
+              key={diff.id}
+              onClick={() => { setDifficulty(diff.id); setTimeout(() => containerRef.current?.focus(), 0); }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                difficulty === diff.id 
+                  ? 'bg-zinc-800 text-white' 
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <span 
+                className="w-2 h-2 rounded-full" 
+                style={{ backgroundColor: diff.color }}
+              />
+              {diff.label}
             </button>
           ))}
         </div>
