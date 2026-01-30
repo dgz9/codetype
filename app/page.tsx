@@ -460,7 +460,7 @@ export default function Home() {
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          className="typing-area w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 sm:p-8 focus:outline-none cursor-text glow-purple"
+          className="typing-area relative w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 sm:p-8 focus:outline-none cursor-text glow-purple"
         >
           {/* Snippet Header */}
           <div className="flex justify-between items-center mb-4 pb-4 border-b border-zinc-800">
