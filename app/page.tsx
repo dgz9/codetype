@@ -22,6 +22,46 @@ interface HighScore {
   date: string;
 }
 
+interface StreakData {
+  currentStreak: number;
+  lastPracticeDate: string;
+  longestStreak: number;
+}
+
+function getStreakData(): StreakData {
+  if (typeof window === 'undefined') return { currentStreak: 0, lastPracticeDate: '', longestStreak: 0 };
+  try {
+    return JSON.parse(localStorage.getItem('codetype-streak') || '{"currentStreak":0,"lastPracticeDate":"","longestStreak":0}');
+  } catch { return { currentStreak: 0, lastPracticeDate: '', longestStreak: 0 }; }
+}
+
+function updateStreak(): StreakData {
+  const today = new Date().toISOString().split('T')[0];
+  const data = getStreakData();
+  
+  if (data.lastPracticeDate === today) {
+    return data; // Already practiced today
+  }
+  
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  
+  let newStreak = 1;
+  if (data.lastPracticeDate === yesterdayStr) {
+    newStreak = data.currentStreak + 1;
+  }
+  
+  const updated: StreakData = {
+    currentStreak: newStreak,
+    lastPracticeDate: today,
+    longestStreak: Math.max(data.longestStreak, newStreak)
+  };
+  
+  localStorage.setItem('codetype-streak', JSON.stringify(updated));
+  return updated;
+}
+
 type TimedMode = null | 30 | 60 | 120;
 
 interface TimedStats {
@@ -52,6 +92,8 @@ export default function Home() {
   const [playerName, setPlayerName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [streak, setStreak] = useState<StreakData>({ currentStreak: 0, lastPracticeDate: '', longestStreak: 0 });
+  const [showStreakUpdate, setShowStreakUpdate] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -68,11 +110,12 @@ export default function Home() {
     }
   }, []);
 
-  // Load leaderboard and saved name
+  // Load leaderboard, saved name, and streak
   useEffect(() => {
     fetchLeaderboard();
     const savedName = localStorage.getItem('codetype-name');
     if (savedName) setPlayerName(savedName);
+    setStreak(getStreakData());
   }, [fetchLeaderboard]);
 
   // Submit score to leaderboard
@@ -171,6 +214,18 @@ export default function Home() {
     };
   }, []);
 
+  // Update streak when timed challenge ends
+  useEffect(() => {
+    if (timedEnded && timedStats.snippetsCompleted > 0) {
+      const newStreak = updateStreak();
+      if (newStreak.currentStreak > streak.currentStreak) {
+        setShowStreakUpdate(true);
+        setTimeout(() => setShowStreakUpdate(false), 2000);
+      }
+      setStreak(newStreak);
+    }
+  }, [timedEnded]);
+
   useEffect(() => {
     startNewGame();
   }, [startNewGame]);
@@ -240,6 +295,14 @@ export default function Home() {
         const finalAccuracy = Math.round((correct / snippet.code.length) * 100);
         setAccuracy(finalAccuracy);
 
+        // Update streak on completion
+        const newStreak = updateStreak();
+        if (newStreak.currentStreak > streak.currentStreak) {
+          setShowStreakUpdate(true);
+          setTimeout(() => setShowStreakUpdate(false), 2000);
+        }
+        setStreak(newStreak);
+
         // Check for high score (must have at least 80% accuracy)
         if (finalAccuracy >= 80) {
           const currentBest = highScore?.wpm || 0;
@@ -283,12 +346,29 @@ export default function Home() {
             <span className="text-white">Type</span>
           </h1>
           <p className="text-zinc-500">Type real code. Get faster. Ship more.</p>
-          {highScore && (
-            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20">
-              <span className="text-yellow-400">🏆</span>
-              <span className="text-yellow-400 text-sm font-medium">Best: {highScore.wpm} WPM</span>
-            </div>
-          )}
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {highScore && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20">
+                <span className="text-yellow-400">🏆</span>
+                <span className="text-yellow-400 text-sm font-medium">Best: {highScore.wpm} WPM</span>
+              </div>
+            )}
+            {streak.currentStreak > 0 && (
+              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
+                showStreakUpdate
+                  ? 'bg-orange-500/20 border-orange-500/40 scale-110'
+                  : 'bg-orange-500/10 border-orange-500/20'
+              }`}>
+                <span className="text-orange-400">🔥</span>
+                <span className="text-orange-400 text-sm font-medium">
+                  {streak.currentStreak} day{streak.currentStreak !== 1 ? 's' : ''}
+                </span>
+                {streak.longestStreak > streak.currentStreak && (
+                  <span className="text-orange-400/60 text-xs">(best: {streak.longestStreak})</span>
+                )}
+              </div>
+            )}
+          </div>
           <div className="mt-3">
             <button
               onClick={() => { setShowLeaderboard(!showLeaderboard); if (!showLeaderboard) fetchLeaderboard(); }}
