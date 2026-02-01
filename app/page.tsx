@@ -28,6 +28,28 @@ interface StreakData {
   longestStreak: number;
 }
 
+interface WpmEntry {
+  wpm: number;
+  accuracy: number;
+  date: string;
+  mode: string;
+}
+
+function getWpmHistory(): WpmEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    return JSON.parse(localStorage.getItem('codetype-wpm-history') || '[]');
+  } catch { return []; }
+}
+
+function addWpmEntry(entry: WpmEntry): WpmEntry[] {
+  const history = getWpmHistory();
+  // Keep last 20 entries
+  const updated = [...history, entry].slice(-20);
+  localStorage.setItem('codetype-wpm-history', JSON.stringify(updated));
+  return updated;
+}
+
 function getStreakData(): StreakData {
   if (typeof window === 'undefined') return { currentStreak: 0, lastPracticeDate: '', longestStreak: 0 };
   try {
@@ -94,6 +116,8 @@ export default function Home() {
   const [submitted, setSubmitted] = useState(false);
   const [streak, setStreak] = useState<StreakData>({ currentStreak: 0, lastPracticeDate: '', longestStreak: 0 });
   const [showStreakUpdate, setShowStreakUpdate] = useState(false);
+  const [wpmHistory, setWpmHistory] = useState<WpmEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -110,12 +134,13 @@ export default function Home() {
     }
   }, []);
 
-  // Load leaderboard, saved name, and streak
+  // Load leaderboard, saved name, streak, and WPM history
   useEffect(() => {
     fetchLeaderboard();
     const savedName = localStorage.getItem('codetype-name');
     if (savedName) setPlayerName(savedName);
     setStreak(getStreakData());
+    setWpmHistory(getWpmHistory());
   }, [fetchLeaderboard]);
 
   // Submit score to leaderboard
@@ -214,15 +239,26 @@ export default function Home() {
     };
   }, []);
 
-  // Update streak when timed challenge ends
+  // Update streak and WPM history when timed challenge ends
   useEffect(() => {
-    if (timedEnded && timedStats.snippetsCompleted > 0) {
+    if (timedEnded && timedStats.snippetsCompleted > 0 && timedMode) {
       const newStreak = updateStreak();
       if (newStreak.currentStreak > streak.currentStreak) {
         setShowStreakUpdate(true);
         setTimeout(() => setShowStreakUpdate(false), 2000);
       }
       setStreak(newStreak);
+      
+      // Add to WPM history
+      const finalWpm = Math.round((timedStats.totalChars / 5) / (timedMode / 60));
+      const finalAcc = Math.round((timedStats.correctChars / timedStats.totalChars) * 100);
+      const entry: WpmEntry = {
+        wpm: finalWpm,
+        accuracy: finalAcc,
+        date: new Date().toISOString(),
+        mode: `${timedMode}s`
+      };
+      setWpmHistory(addWpmEntry(entry));
     }
   }, [timedEnded]);
 
@@ -318,6 +354,15 @@ export default function Home() {
             localStorage.setItem('codetype-highscore', JSON.stringify(newHigh));
           }
         }
+
+        // Add to WPM history
+        const entry: WpmEntry = {
+          wpm: finalWpm,
+          accuracy: finalAccuracy,
+          date: new Date().toISOString(),
+          mode: 'practice'
+        };
+        setWpmHistory(addWpmEntry(entry));
       }
     }
   }, [snippet, input, startTime, endTime, timedMode, timedEnded, language, highScore]);
@@ -369,9 +414,9 @@ export default function Home() {
               </div>
             )}
           </div>
-          <div className="mt-3">
+          <div className="mt-3 flex justify-center gap-2">
             <button
-              onClick={() => { setShowLeaderboard(!showLeaderboard); if (!showLeaderboard) fetchLeaderboard(); }}
+              onClick={() => { setShowLeaderboard(!showLeaderboard); if (!showLeaderboard) fetchLeaderboard(); setShowHistory(false); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 showLeaderboard
                   ? 'bg-purple-600 text-white'
@@ -379,6 +424,16 @@ export default function Home() {
               }`}
             >
               🏆 Leaderboard
+            </button>
+            <button
+              onClick={() => { setShowHistory(!showHistory); setShowLeaderboard(false); }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                showHistory
+                  ? 'bg-pink-600 text-white'
+                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
+              }`}
+            >
+              📈 My Progress
             </button>
           </div>
         </div>
@@ -424,6 +479,80 @@ export default function Home() {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* WPM History Chart */}
+        {showHistory && (
+          <div className="w-full max-w-lg mb-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 fade-in">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <span>📈</span> Your WPM Progress
+            </h3>
+            {wpmHistory.length === 0 ? (
+              <p className="text-zinc-500 text-center py-4">Complete some typing sessions to see your progress!</p>
+            ) : (
+              <>
+                {/* Stats Summary */}
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                    <div className="text-xl font-bold text-purple-400">
+                      {Math.round(wpmHistory.reduce((sum, e) => sum + e.wpm, 0) / wpmHistory.length)}
+                    </div>
+                    <div className="text-xs text-zinc-500">Avg WPM</div>
+                  </div>
+                  <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                    <div className="text-xl font-bold text-green-400">
+                      {Math.max(...wpmHistory.map(e => e.wpm))}
+                    </div>
+                    <div className="text-xs text-zinc-500">Best WPM</div>
+                  </div>
+                  <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                    <div className="text-xl font-bold text-pink-400">
+                      {wpmHistory.length}
+                    </div>
+                    <div className="text-xs text-zinc-500">Sessions</div>
+                  </div>
+                </div>
+                
+                {/* Bar Chart */}
+                <div className="relative h-32 flex items-end gap-1">
+                  {(() => {
+                    const maxWpm = Math.max(...wpmHistory.map(e => e.wpm), 1);
+                    return wpmHistory.slice(-15).map((entry, i) => {
+                      const height = (entry.wpm / maxWpm) * 100;
+                      const isRecent = i === wpmHistory.slice(-15).length - 1;
+                      return (
+                        <div
+                          key={i}
+                          className="flex-1 group relative"
+                          title={`${entry.wpm} WPM • ${entry.accuracy}% • ${entry.mode}`}
+                        >
+                          <div
+                            className={`w-full rounded-t transition-all ${
+                              isRecent 
+                                ? 'bg-gradient-to-t from-purple-600 to-pink-500' 
+                                : entry.accuracy >= 95 
+                                  ? 'bg-green-500/60 hover:bg-green-500/80' 
+                                  : entry.accuracy >= 80 
+                                    ? 'bg-purple-500/60 hover:bg-purple-500/80'
+                                    : 'bg-orange-500/60 hover:bg-orange-500/80'
+                            }`}
+                            style={{ height: `${height}%` }}
+                          />
+                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-800 px-2 py-1 rounded text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                            {entry.wpm} WPM
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+                <div className="flex justify-between text-xs text-zinc-600 mt-2">
+                  <span>← Older</span>
+                  <span>Recent →</span>
+                </div>
+              </>
             )}
           </div>
         )}
