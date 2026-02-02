@@ -92,6 +92,45 @@ interface TimedStats {
   snippetsCompleted: number;
 }
 
+// Sound effects using Web Audio API
+function createTypingSound(isCorrect: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Different sounds for correct vs incorrect
+    if (isCorrect) {
+      oscillator.frequency.value = 800 + Math.random() * 200; // Higher pitch for correct
+      oscillator.type = 'sine';
+      gainNode.gain.value = 0.03;
+    } else {
+      oscillator.frequency.value = 200 + Math.random() * 100; // Lower pitch for error
+      oscillator.type = 'square';
+      gainNode.gain.value = 0.05;
+    }
+    
+    oscillator.start();
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.08);
+    oscillator.stop(audioContext.currentTime + 0.08);
+  } catch (e) {
+    // Audio not available
+  }
+}
+
+function getSoundEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('codetype-sound') === 'true';
+}
+
+function setSoundEnabled(enabled: boolean) {
+  localStorage.setItem('codetype-sound', enabled ? 'true' : 'false');
+}
+
 export default function Home() {
   const [snippet, setSnippet] = useState<Snippet | null>(null);
   const [language, setLanguage] = useState<Language | undefined>(undefined);
@@ -118,6 +157,7 @@ export default function Home() {
   const [showStreakUpdate, setShowStreakUpdate] = useState(false);
   const [wpmHistory, setWpmHistory] = useState<WpmEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [soundEnabled, setSoundState] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -134,13 +174,14 @@ export default function Home() {
     }
   }, []);
 
-  // Load leaderboard, saved name, streak, and WPM history
+  // Load leaderboard, saved name, streak, WPM history, and sound preference
   useEffect(() => {
     fetchLeaderboard();
     const savedName = localStorage.getItem('codetype-name');
     if (savedName) setPlayerName(savedName);
     setStreak(getStreakData());
     setWpmHistory(getWpmHistory());
+    setSoundState(getSoundEnabled());
   }, [fetchLeaderboard]);
 
   // Submit score to leaderboard
@@ -297,6 +338,12 @@ export default function Home() {
     if (e.key.length === 1) {
       const newInput = input + e.key;
       setInput(newInput);
+      
+      // Play sound effect
+      if (soundEnabled) {
+        const isCorrect = e.key === snippet.code[input.length];
+        createTypingSound(isCorrect);
+      }
 
       if (newInput.length === snippet.code.length) {
         // Timed mode: auto-advance to next snippet
@@ -365,7 +412,7 @@ export default function Home() {
         setWpmHistory(addWpmEntry(entry));
       }
     }
-  }, [snippet, input, startTime, endTime, timedMode, timedEnded, language, highScore]);
+  }, [snippet, input, startTime, endTime, timedMode, timedEnded, language, highScore, soundEnabled]);
 
   const getCharState = (index: number): CharState => {
     if (index >= input.length) {
@@ -434,6 +481,22 @@ export default function Home() {
               }`}
             >
               📈 My Progress
+            </button>
+            <button
+              onClick={() => { 
+                const newState = !soundEnabled; 
+                setSoundState(newState); 
+                setSoundEnabled(newState);
+                if (newState) createTypingSound(true); // Preview sound
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                soundEnabled
+                  ? 'bg-green-600 text-white'
+                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
+              }`}
+              title={soundEnabled ? 'Sound On' : 'Sound Off'}
+            >
+              {soundEnabled ? '🔊' : '🔇'} Sound
             </button>
           </div>
         </div>
