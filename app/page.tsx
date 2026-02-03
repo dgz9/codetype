@@ -186,6 +186,7 @@ export default function Home() {
   const [soundEnabled, setSoundState] = useState(false);
   const [keyHeatmap, setKeyHeatmap] = useState<KeyHeatmap>({});
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -506,55 +507,6 @@ export default function Home() {
               </div>
             )}
           </div>
-          <div className="mt-3 flex justify-center gap-2">
-            <button
-              onClick={() => { setShowLeaderboard(!showLeaderboard); if (!showLeaderboard) fetchLeaderboard(); setShowHistory(false); }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                showLeaderboard
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
-              }`}
-            >
-              🏆 Leaderboard
-            </button>
-            <button
-              onClick={() => { setShowHistory(!showHistory); setShowLeaderboard(false); }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                showHistory
-                  ? 'bg-pink-600 text-white'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
-              }`}
-            >
-              📈 My Progress
-            </button>
-            <button
-              onClick={() => { 
-                const newState = !soundEnabled; 
-                setSoundState(newState); 
-                setSoundEnabled(newState);
-                if (newState) createTypingSound(true); // Preview sound
-              }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                soundEnabled
-                  ? 'bg-green-600 text-white'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
-              }`}
-              title={soundEnabled ? 'Sound On' : 'Sound Off'}
-            >
-              {soundEnabled ? '🔊' : '🔇'} Sound
-            </button>
-            <button
-              onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                showHeatmap
-                  ? 'bg-orange-600 text-white'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
-              }`}
-              title="Keyboard Heatmap"
-            >
-              ⌨️ Heatmap
-            </button>
-          </div>
         </div>
 
         {/* Leaderboard */}
@@ -726,109 +678,165 @@ export default function Home() {
           </div>
         )}
 
-        {/* Mode Selector - Timed Challenges */}
-        <div className="flex flex-wrap justify-center gap-2 mb-4">
-          <button
-            onClick={() => { setTimedMode(null); if (timerRef.current) clearInterval(timerRef.current); setTimeRemaining(null); setTimedEnded(false); startNewGame(); setTimeout(() => containerRef.current?.focus(), 0); }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              !timedMode 
-                ? 'bg-purple-600 text-white' 
-                : 'bg-zinc-800 text-zinc-400 hover:text-white'
-            }`}
-          >
-            📝 Practice
-          </button>
-          {[30, 60, 120].map((seconds) => (
-            <button
-              key={seconds}
-              onClick={() => startTimedChallenge(seconds as TimedMode)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                timedMode === seconds 
-                  ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white' 
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
-              }`}
-            >
-              ⏱️ {seconds}s
-            </button>
-          ))}
-        </div>
-
-        {/* Timer Display */}
-        {timedMode && timeRemaining !== null && (
-          <div className={`mb-4 px-6 py-3 rounded-xl text-center ${
-            timeRemaining <= 10 
-              ? 'bg-red-500/20 border border-red-500/30 animate-pulse' 
-              : 'bg-orange-500/20 border border-orange-500/30'
-          }`}>
-            <div className={`text-3xl font-bold font-mono ${timeRemaining <= 10 ? 'text-red-400' : 'text-orange-400'}`}>
-              {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+        {/* Unified Control Bar */}
+        <div className="w-full max-w-3xl mb-6 bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 space-y-3">
+          {/* Top Row: Mode + Timer + Utilities */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Mode Selector */}
+            <div className="flex gap-1 p-1 bg-zinc-800/50 rounded-lg">
+              <button
+                onClick={() => { setTimedMode(null); if (timerRef.current) clearInterval(timerRef.current); setTimeRemaining(null); setTimedEnded(false); startNewGame(); setTimeout(() => containerRef.current?.focus(), 0); }}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  !timedMode 
+                    ? 'bg-purple-600 text-white' 
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Practice
+              </button>
+              {[30, 60, 120].map((seconds) => (
+                <button
+                  key={seconds}
+                  onClick={() => startTimedChallenge(seconds as TimedMode)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    timedMode === seconds 
+                      ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white' 
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  {seconds}s
+                </button>
+              ))}
             </div>
-            <div className="text-xs text-zinc-400 mt-1">
-              {timedStats.snippetsCompleted} snippets • {timedStats.totalChars} chars
+
+            {/* Timer Display (inline) */}
+            {timedMode && timeRemaining !== null && (
+              <div className={`px-4 py-1.5 rounded-lg text-center ${
+                timeRemaining <= 10 
+                  ? 'bg-red-500/20 border border-red-500/30 animate-pulse' 
+                  : 'bg-orange-500/20 border border-orange-500/30'
+              }`}>
+                <span className={`text-xl font-bold font-mono ${timeRemaining <= 10 ? 'text-red-400' : 'text-orange-400'}`}>
+                  {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                </span>
+                <span className="text-xs text-zinc-400 ml-2">
+                  {timedStats.snippetsCompleted} done
+                </span>
+              </div>
+            )}
+
+            {/* Utility Buttons */}
+            <div className="flex gap-1">
+              <button
+                onClick={() => { setShowLeaderboard(!showLeaderboard); if (!showLeaderboard) fetchLeaderboard(); setShowHistory(false); setShowHeatmap(false); }}
+                className={`p-2 rounded-lg text-sm transition-all ${
+                  showLeaderboard ? 'bg-purple-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title="Leaderboard"
+              >
+                🏆
+              </button>
+              <button
+                onClick={() => { setShowHistory(!showHistory); setShowLeaderboard(false); setShowHeatmap(false); }}
+                className={`p-2 rounded-lg text-sm transition-all ${
+                  showHistory ? 'bg-pink-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title="My Progress"
+              >
+                📈
+              </button>
+              <button
+                onClick={() => { setShowHeatmap(!showHeatmap); setShowLeaderboard(false); setShowHistory(false); }}
+                className={`p-2 rounded-lg text-sm transition-all ${
+                  showHeatmap ? 'bg-orange-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title="Keyboard Heatmap"
+              >
+                ⌨️
+              </button>
+              <button
+                onClick={() => { 
+                  const newState = !soundEnabled; 
+                  setSoundState(newState); 
+                  setSoundEnabled(newState);
+                  if (newState) createTypingSound(true);
+                }}
+                className={`p-2 rounded-lg text-sm transition-all ${
+                  soundEnabled ? 'bg-green-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title={soundEnabled ? 'Sound On' : 'Sound Off'}
+              >
+                {soundEnabled ? '🔊' : '🔇'}
+              </button>
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className={`p-2 rounded-lg text-sm transition-all ${
+                  showSettings ? 'bg-zinc-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title="Filters"
+              >
+                ⚙️
+              </button>
             </div>
           </div>
-        )}
 
-        {/* Language Selector */}
-        <div className="flex flex-wrap justify-center gap-1 mb-6 p-1 bg-zinc-900/50 rounded-xl border border-zinc-800">
-          <button
-            onClick={() => { setLanguage(undefined); setTimeout(() => containerRef.current?.focus(), 0); }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              !language 
-                ? 'bg-zinc-800 text-white' 
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            All
-          </button>
-          {languages.map((lang) => (
-            <button
-              key={lang.id}
-              onClick={() => { setLanguage(lang.id); setTimeout(() => containerRef.current?.focus(), 0); }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                language === lang.id 
-                  ? 'bg-zinc-800 text-white' 
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <span 
-                className="w-2 h-2 rounded-full" 
-                style={{ backgroundColor: lang.color }}
-              />
-              {lang.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Difficulty Selector */}
-        <div className="flex flex-wrap justify-center gap-1 mb-6 p-1 bg-zinc-900/50 rounded-xl border border-zinc-800">
-          <button
-            onClick={() => { setDifficulty(undefined); setTimeout(() => containerRef.current?.focus(), 0); }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              !difficulty 
-                ? 'bg-zinc-800 text-white' 
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            Any Difficulty
-          </button>
-          {difficulties.map((diff) => (
-            <button
-              key={diff.id}
-              onClick={() => { setDifficulty(diff.id); setTimeout(() => containerRef.current?.focus(), 0); }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                difficulty === diff.id 
-                  ? 'bg-zinc-800 text-white' 
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <span 
-                className="w-2 h-2 rounded-full" 
-                style={{ backgroundColor: diff.color }}
-              />
-              {diff.label}
-            </button>
-          ))}
+          {/* Expandable Filters */}
+          {showSettings && (
+            <div className="pt-3 border-t border-zinc-800 space-y-2 fade-in">
+              {/* Language Filter */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-zinc-500 w-16">Language:</span>
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    onClick={() => { setLanguage(undefined); setTimeout(() => containerRef.current?.focus(), 0); }}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                      !language ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.id}
+                      onClick={() => { setLanguage(lang.id); setTimeout(() => containerRef.current?.focus(), 0); }}
+                      className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
+                        language === lang.id ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: lang.color }} />
+                      {lang.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Difficulty Filter */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-zinc-500 w-16">Difficulty:</span>
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    onClick={() => { setDifficulty(undefined); setTimeout(() => containerRef.current?.focus(), 0); }}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                      !difficulty ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Any
+                  </button>
+                  {difficulties.map((diff) => (
+                    <button
+                      key={diff.id}
+                      onClick={() => { setDifficulty(diff.id); setTimeout(() => containerRef.current?.focus(), 0); }}
+                      className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
+                        difficulty === diff.id ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: diff.color }} />
+                      {diff.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Main Typing Area */}
