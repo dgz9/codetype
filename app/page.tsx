@@ -131,6 +131,32 @@ function setSoundEnabled(enabled: boolean) {
   localStorage.setItem('codetype-sound', enabled ? 'true' : 'false');
 }
 
+// Keyboard heatmap types
+interface KeyStats {
+  correct: number;
+  incorrect: number;
+}
+
+type KeyHeatmap = Record<string, KeyStats>;
+
+// Keyboard layout for heatmap display
+const keyboardRows = [
+  ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='],
+  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'],
+  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"],
+  ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'],
+];
+
+function getKeyAccuracy(stats: KeyStats | undefined): 'neutral' | 'perfect' | 'good' | 'okay' | 'poor' {
+  if (!stats || (stats.correct === 0 && stats.incorrect === 0)) return 'neutral';
+  const total = stats.correct + stats.incorrect;
+  const accuracy = stats.correct / total;
+  if (accuracy >= 0.95) return 'perfect';
+  if (accuracy >= 0.8) return 'good';
+  if (accuracy >= 0.6) return 'okay';
+  return 'poor';
+}
+
 export default function Home() {
   const [snippet, setSnippet] = useState<Snippet | null>(null);
   const [language, setLanguage] = useState<Language | undefined>(undefined);
@@ -158,6 +184,8 @@ export default function Home() {
   const [wpmHistory, setWpmHistory] = useState<WpmEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [soundEnabled, setSoundState] = useState(false);
+  const [keyHeatmap, setKeyHeatmap] = useState<KeyHeatmap>({});
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -230,6 +258,7 @@ export default function Home() {
     setAccuracy(100);
     setIsNewHighScore(false);
     setTimedEnded(false);
+    setKeyHeatmap({});
   }, [language, difficulty]);
 
   // Start timed challenge
@@ -339,9 +368,25 @@ export default function Home() {
       const newInput = input + e.key;
       setInput(newInput);
       
+      // Track key accuracy for heatmap
+      const expectedKey = snippet.code[input.length];
+      const isCorrect = e.key === expectedKey;
+      
+      // Update heatmap stats for the pressed key
+      setKeyHeatmap(prev => {
+        const keyLower = e.key.toLowerCase();
+        const existing = prev[keyLower] || { correct: 0, incorrect: 0 };
+        return {
+          ...prev,
+          [keyLower]: {
+            correct: existing.correct + (isCorrect ? 1 : 0),
+            incorrect: existing.incorrect + (isCorrect ? 0 : 1)
+          }
+        };
+      });
+      
       // Play sound effect
       if (soundEnabled) {
-        const isCorrect = e.key === snippet.code[input.length];
         createTypingSound(isCorrect);
       }
 
@@ -498,6 +543,17 @@ export default function Home() {
             >
               {soundEnabled ? '🔊' : '🔇'} Sound
             </button>
+            <button
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                showHeatmap
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
+              }`}
+              title="Keyboard Heatmap"
+            >
+              ⌨️ Heatmap
+            </button>
           </div>
         </div>
 
@@ -617,6 +673,56 @@ export default function Home() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Keyboard Heatmap */}
+        {showHeatmap && (
+          <div className="w-full max-w-xl mb-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 fade-in">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <span>⌨️</span> Keyboard Heatmap
+              {Object.keys(keyHeatmap).length === 0 && (
+                <span className="text-xs text-zinc-500 font-normal">Start typing to see accuracy</span>
+              )}
+            </h3>
+            <div className="flex flex-col items-center gap-1">
+              {keyboardRows.map((row, rowIndex) => (
+                <div key={rowIndex} className="flex gap-1" style={{ marginLeft: rowIndex === 1 ? '20px' : rowIndex === 2 ? '30px' : rowIndex === 3 ? '50px' : '0' }}>
+                  {row.map((key) => {
+                    const stats = keyHeatmap[key.toLowerCase()];
+                    const accuracyClass = getKeyAccuracy(stats);
+                    const total = stats ? stats.correct + stats.incorrect : 0;
+                    const pct = stats && total > 0 ? Math.round((stats.correct / total) * 100) : null;
+                    return (
+                      <div
+                        key={key}
+                        className={`keyboard-key ${accuracyClass}`}
+                        title={stats ? `${pct}% accuracy (${stats.correct}/${total})` : 'No data'}
+                      >
+                        {key.toUpperCase()}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+              {/* Space bar */}
+              <div className="flex gap-1 mt-1">
+                <div
+                  className={`keyboard-key ${getKeyAccuracy(keyHeatmap[' '])} px-16`}
+                  style={{ minWidth: '200px' }}
+                  title={keyHeatmap[' '] ? `${Math.round((keyHeatmap[' '].correct / (keyHeatmap[' '].correct + keyHeatmap[' '].incorrect)) * 100)}% accuracy` : 'No data'}
+                >
+                  SPACE
+                </div>
+              </div>
+            </div>
+            {/* Legend */}
+            <div className="flex justify-center gap-4 mt-4 text-xs text-zinc-400">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500/30"></span> 95%+</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500/15"></span> 80%+</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-500/20"></span> 60%+</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500/25"></span> &lt;60%</span>
+            </div>
           </div>
         )}
 
