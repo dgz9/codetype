@@ -187,6 +187,7 @@ export default function Home() {
   const [keyHeatmap, setKeyHeatmap] = useState<KeyHeatmap>({});
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -477,7 +478,21 @@ export default function Home() {
       <div className="absolute inset-0 bg-gradient-to-b from-purple-900/5 via-transparent to-pink-900/5 pointer-events-none" />
       
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 max-w-5xl mx-auto">
-        {/* Header */}
+        {/* Focus Mode Indicator */}
+        {focusMode && (
+          <div className="fixed top-4 right-4 z-50 px-3 py-1.5 rounded-full bg-purple-600/90 text-white text-xs font-medium flex items-center gap-2">
+            <span>🎯 Focus Mode</span>
+            <button 
+              onClick={() => setFocusMode(false)}
+              className="hover:bg-purple-500 rounded px-1.5 py-0.5 transition-colors"
+            >
+              Exit
+            </button>
+          </div>
+        )}
+
+        {/* Header - hidden in focus mode */}
+        {!focusMode && (
         <div className="text-center mb-8">
           <h1 className="text-4xl sm:text-5xl font-bold mb-2 tracking-tight">
             <span className="text-purple-400">Code</span>
@@ -508,9 +523,10 @@ export default function Home() {
             )}
           </div>
         </div>
+        )}
 
-        {/* Leaderboard */}
-        {showLeaderboard && (
+        {/* Leaderboard - hidden in focus mode */}
+        {showLeaderboard && !focusMode && (
           <div className="w-full max-w-md mb-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 fade-in">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <span>🏆</span> Global Leaderboard
@@ -554,8 +570,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* WPM History Chart */}
-        {showHistory && (
+        {/* WPM History Chart - hidden in focus mode */}
+        {showHistory && !focusMode && (
           <div className="w-full max-w-lg mb-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 fade-in">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <span>📈</span> Your WPM Progress
@@ -628,8 +644,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Keyboard Heatmap */}
-        {showHeatmap && (
+        {/* Keyboard Heatmap - hidden in focus mode */}
+        {showHeatmap && !focusMode && (
           <div className="w-full max-w-xl mb-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 fade-in">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <span>⌨️</span> Keyboard Heatmap
@@ -776,6 +792,15 @@ export default function Home() {
                 title="Filters"
               >
                 ⚙️
+              </button>
+              <button
+                onClick={() => setFocusMode(!focusMode)}
+                className={`p-2 rounded-lg text-sm transition-all ${
+                  focusMode ? 'bg-purple-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title={focusMode ? 'Exit Focus Mode' : 'Focus Mode - Hide distractions'}
+              >
+                {focusMode ? '👁️' : '🎯'}
               </button>
             </div>
           </div>
@@ -1043,7 +1068,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Footer */}
+        {/* Footer - hidden in focus mode */}
+        {!focusMode && (
         <footer className="mt-12 text-center">
           <p className="text-zinc-600 text-sm">
             Made with 🦞 by{' '}
@@ -1056,6 +1082,7 @@ export default function Home() {
             </a>
           </p>
         </footer>
+        )}
       </div>
     </main>
   );
