@@ -224,3 +224,36 @@ export const languages: { id: Language; name: string; color: string }[] = [
   { id: 'rust', name: 'Rust', color: '#dea584' },
   { id: 'go', name: 'Go', color: '#00add8' },
 ];
+
+// Custom snippet support
+export function createCustomSnippet(code: string, name?: string): Snippet {
+  return {
+    id: 'custom-' + Date.now(),
+    code: code.trimEnd(),
+    language: 'javascript', // default, doesn't matter for custom
+    difficulty: 'medium',
+    name: name || 'Custom Snippet',
+  };
+}
+
+// Save/load custom snippets from localStorage
+export function getSavedCustomSnippets(): { code: string; name: string }[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    return JSON.parse(localStorage.getItem('codetype-custom-snippets') || '[]');
+  } catch { return []; }
+}
+
+export function saveCustomSnippet(code: string, name: string) {
+  const existing = getSavedCustomSnippets();
+  const updated = [...existing, { code, name }].slice(-10); // Keep last 10
+  localStorage.setItem('codetype-custom-snippets', JSON.stringify(updated));
+  return updated;
+}
+
+export function deleteCustomSnippet(index: number) {
+  const existing = getSavedCustomSnippets();
+  existing.splice(index, 1);
+  localStorage.setItem('codetype-custom-snippets', JSON.stringify(existing));
+  return existing;
+}

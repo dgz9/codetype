@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getRandomSnippet, languages, difficulties, type Language, type Difficulty, type Snippet } from '@/lib/snippets';
+import { getRandomSnippet, languages, difficulties, createCustomSnippet, getSavedCustomSnippets, saveCustomSnippet, deleteCustomSnippet, type Language, type Difficulty, type Snippet } from '@/lib/snippets';
 
 interface LeaderboardEntry {
   id: number;
@@ -188,6 +188,11 @@ export default function Home() {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customCode, setCustomCode] = useState('');
+  const [customName, setCustomName] = useState('');
+  const [savedCustomSnippets, setSavedCustomSnippets] = useState<{ code: string; name: string }[]>([]);
+  const [isCustomMode, setIsCustomMode] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -204,7 +209,7 @@ export default function Home() {
     }
   }, []);
 
-  // Load leaderboard, saved name, streak, WPM history, and sound preference
+  // Load leaderboard, saved name, streak, WPM history, sound preference, and custom snippets
   useEffect(() => {
     fetchLeaderboard();
     const savedName = localStorage.getItem('codetype-name');
@@ -212,6 +217,7 @@ export default function Home() {
     setStreak(getStreakData());
     setWpmHistory(getWpmHistory());
     setSoundState(getSoundEnabled());
+    setSavedCustomSnippets(getSavedCustomSnippets());
   }, [fetchLeaderboard]);
 
   // Submit score to leaderboard
@@ -286,6 +292,39 @@ export default function Home() {
       }, 1000);
     }
   }, [startNewGame]);
+
+  // Start custom snippet
+  const startCustomSnippet = useCallback((code: string, name?: string) => {
+    if (!code.trim()) return;
+    const customSnippet = createCustomSnippet(code, name);
+    setSnippet(customSnippet);
+    setInput('');
+    setStartTime(null);
+    setEndTime(null);
+    setWpm(0);
+    setAccuracy(100);
+    setIsNewHighScore(false);
+    setTimedEnded(false);
+    setKeyHeatmap({});
+    setIsCustomMode(true);
+    setShowCustomInput(false);
+    setTimeout(() => containerRef.current?.focus(), 0);
+  }, []);
+
+  const handleSaveCustomSnippet = useCallback(() => {
+    if (!customCode.trim()) return;
+    const name = customName.trim() || 'Custom Snippet';
+    const updated = saveCustomSnippet(customCode.trim(), name);
+    setSavedCustomSnippets(updated);
+    startCustomSnippet(customCode.trim(), name);
+    setCustomCode('');
+    setCustomName('');
+  }, [customCode, customName, startCustomSnippet]);
+
+  const handleDeleteCustomSnippet = useCallback((index: number) => {
+    const updated = deleteCustomSnippet(index);
+    setSavedCustomSnippets(updated);
+  }, []);
 
   // Auto-advance to next snippet in timed mode
   const advanceToNextSnippet = useCallback(() => {
@@ -802,6 +841,15 @@ export default function Home() {
               >
                 {focusMode ? '👁️' : '🎯'}
               </button>
+              <button
+                onClick={() => { setShowCustomInput(!showCustomInput); setShowLeaderboard(false); setShowHistory(false); setShowHeatmap(false); }}
+                className={`p-2 rounded-lg text-sm transition-all ${
+                  showCustomInput ? 'bg-cyan-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title="Custom Text Input"
+              >
+                ✏️
+              </button>
             </div>
           </div>
 
@@ -864,6 +912,99 @@ export default function Home() {
           )}
         </div>
 
+        {/* Custom Text Input Panel */}
+        {showCustomInput && !focusMode && (
+          <div className="w-full max-w-3xl mb-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 fade-in">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <span>✏️</span> Custom Text
+              <span className="text-xs text-zinc-500 font-normal ml-2">Paste your own code to practice</span>
+            </h3>
+            
+            {/* Input Area */}
+            <div className="space-y-3 mb-4">
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="Snippet name (optional)"
+                maxLength={40}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+              />
+              <textarea
+                value={customCode}
+                onChange={(e) => setCustomCode(e.target.value)}
+                placeholder={`Paste your code here...\n\nExample:\nconst hello = (name) => {\n  return \`Hello, \${name}!\`;\n};`}
+                rows={6}
+                className="w-full px-3 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-cyan-500 transition-colors resize-y"
+                style={{ tabSize: 2 }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => startCustomSnippet(customCode, customName || undefined)}
+                  disabled={!customCode.trim()}
+                  className="flex-1 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
+                >
+                  ▶ Start Typing
+                </button>
+                <button
+                  onClick={handleSaveCustomSnippet}
+                  disabled={!customCode.trim()}
+                  className="px-4 py-2.5 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
+                >
+                  💾 Save & Start
+                </button>
+              </div>
+              {customCode.trim() && (
+                <p className="text-xs text-zinc-500">{customCode.trim().length} characters</p>
+              )}
+            </div>
+
+            {/* Saved Custom Snippets */}
+            {savedCustomSnippets.length > 0 && (
+              <div className="pt-3 border-t border-zinc-700">
+                <p className="text-xs text-zinc-500 mb-2">Saved snippets ({savedCustomSnippets.length})</p>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {savedCustomSnippets.map((s, i) => (
+                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 transition-all group">
+                      <button
+                        onClick={() => startCustomSnippet(s.code, s.name)}
+                        className="flex-1 text-left min-w-0"
+                      >
+                        <p className="text-sm text-white font-medium truncate">{s.name}</p>
+                        <p className="text-xs text-zinc-500 truncate font-mono">{s.code.slice(0, 60)}...</p>
+                      </button>
+                      <span className="text-xs text-zinc-600">{s.code.length}ch</span>
+                      <button
+                        onClick={() => handleDeleteCustomSnippet(i)}
+                        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all p-1"
+                        title="Delete snippet"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Custom Mode indicator */}
+        {isCustomMode && !showCustomInput && (
+          <div className="w-full max-w-3xl mb-3 flex items-center justify-between px-2">
+            <div className="flex items-center gap-2 text-cyan-400 text-sm">
+              <span>✏️</span>
+              <span className="font-medium">Custom Mode</span>
+            </div>
+            <button
+              onClick={() => { setIsCustomMode(false); startNewGame(); }}
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1 rounded bg-zinc-800/50"
+            >
+              ← Back to Library
+            </button>
+          </div>
+        )}
+
         {/* Main Typing Area */}
         <div
           ref={containerRef}
@@ -876,19 +1017,29 @@ export default function Home() {
           {/* Snippet Header */}
           <div className="flex justify-between items-center mb-4 pb-4 border-b border-zinc-800">
             <div className="flex items-center gap-3">
-              <span 
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: languages.find(l => l.id === snippet.language)?.color }}
-              />
+              {isCustomMode ? (
+                <span className="w-3 h-3 rounded-full bg-cyan-400" />
+              ) : (
+                <span 
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: languages.find(l => l.id === snippet.language)?.color }}
+                />
+              )}
               <span className="text-zinc-400 text-sm font-medium">{snippet.name}</span>
             </div>
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-              snippet.difficulty === 'easy' ? 'badge-easy' :
-              snippet.difficulty === 'medium' ? 'badge-medium' :
-              'badge-hard'
-            }`}>
-              {snippet.difficulty}
-            </span>
+            {isCustomMode ? (
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                custom
+              </span>
+            ) : (
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                snippet.difficulty === 'easy' ? 'badge-easy' :
+                snippet.difficulty === 'medium' ? 'badge-medium' :
+                'badge-hard'
+              }`}>
+                {snippet.difficulty}
+              </span>
+            )}
           </div>
 
           {/* Code Display */}
