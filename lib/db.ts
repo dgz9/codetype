@@ -1,6 +1,16 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, NeonQueryFunction } from '@neondatabase/serverless';
 
-const sql = neon(process.env.DATABASE_URL!);
+let sql: NeonQueryFunction<false, false> | null = null;
+
+function getSQL() {
+  if (!sql) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL not set');
+    }
+    sql = neon(process.env.DATABASE_URL);
+  }
+  return sql;
+}
 
 export interface LeaderboardEntry {
   id: number;
@@ -13,7 +23,8 @@ export interface LeaderboardEntry {
 }
 
 export async function initDB() {
-  await sql`
+  const db = getSQL();
+  await db`
     CREATE TABLE IF NOT EXISTS leaderboard (
       id SERIAL PRIMARY KEY,
       name VARCHAR(50) NOT NULL,
@@ -26,14 +37,15 @@ export async function initDB() {
   `;
   
   // Create index for faster queries
-  await sql`
+  await db`
     CREATE INDEX IF NOT EXISTS idx_leaderboard_wpm ON leaderboard(wpm DESC)
   `;
 }
 
 export async function getLeaderboard(mode?: string, limit: number = 10): Promise<LeaderboardEntry[]> {
+  const db = getSQL();
   if (mode) {
-    const result = await sql`
+    const result = await db`
       SELECT id, name, wpm, accuracy, mode, language, created_at
       FROM leaderboard 
       WHERE mode = ${mode}
@@ -43,7 +55,7 @@ export async function getLeaderboard(mode?: string, limit: number = 10): Promise
     return result as LeaderboardEntry[];
   }
   
-  const result = await sql`
+  const result = await db`
     SELECT id, name, wpm, accuracy, mode, language, created_at
     FROM leaderboard 
     ORDER BY wpm DESC 
@@ -59,7 +71,8 @@ export async function addScore(
   mode: string = 'practice',
   language?: string
 ): Promise<LeaderboardEntry> {
-  const result = await sql`
+  const db = getSQL();
+  const result = await db`
     INSERT INTO leaderboard (name, wpm, accuracy, mode, language)
     VALUES (${name}, ${wpm}, ${accuracy}, ${mode}, ${language || null})
     RETURNING id, name, wpm, accuracy, mode, language, created_at
@@ -67,4 +80,4 @@ export async function addScore(
   return result[0] as LeaderboardEntry;
 }
 
-export { sql };
+export { getSQL };

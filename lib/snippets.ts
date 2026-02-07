@@ -225,6 +225,49 @@ export const languages: { id: Language; name: string; color: string }[] = [
   { id: 'go', name: 'Go', color: '#00add8' },
 ];
 
+// Daily Challenge - same snippet for everyone each day
+export function getDailyChallenge(): Snippet {
+  const today = new Date();
+  // Create a deterministic seed from the date
+  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  // Use seed to pick a snippet consistently
+  const index = seed % snippets.length;
+  return snippets[index];
+}
+
+export function getDailyChallengeDate(): string {
+  return new Date().toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+}
+
+// Daily challenge best score tracking
+export interface DailyBest {
+  date: string;
+  wpm: number;
+  accuracy: number;
+  snippetId: string;
+}
+
+export function getDailyBest(): DailyBest | null {
+  if (typeof window === 'undefined') return null;
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    const saved = JSON.parse(localStorage.getItem('codetype-daily-best') || 'null');
+    if (saved && saved.date === today) return saved;
+    return null;
+  } catch { return null; }
+}
+
+export function saveDailyBest(wpm: number, accuracy: number, snippetId: string): DailyBest {
+  const today = new Date().toISOString().split('T')[0];
+  const entry: DailyBest = { date: today, wpm, accuracy, snippetId };
+  localStorage.setItem('codetype-daily-best', JSON.stringify(entry));
+  return entry;
+}
+
 // Custom snippet support
 export function createCustomSnippet(code: string, name?: string): Snippet {
   return {

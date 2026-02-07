@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getRandomSnippet, languages, difficulties, createCustomSnippet, getSavedCustomSnippets, saveCustomSnippet, deleteCustomSnippet, type Language, type Difficulty, type Snippet } from '@/lib/snippets';
+import { getRandomSnippet, languages, difficulties, createCustomSnippet, getSavedCustomSnippets, saveCustomSnippet, deleteCustomSnippet, getDailyChallenge, getDailyChallengeDate, getDailyBest, saveDailyBest, type Language, type Difficulty, type Snippet, type DailyBest } from '@/lib/snippets';
 
 interface LeaderboardEntry {
   id: number;
@@ -33,6 +33,88 @@ interface WpmEntry {
   accuracy: number;
   date: string;
   mode: string;
+}
+
+// Achievement system
+interface Achievement {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  condition: (stats: AchievementStats) => boolean;
+}
+
+interface AchievementStats {
+  totalSessions: number;
+  bestWpm: number;
+  bestAccuracy: number;
+  currentStreak: number;
+  longestStreak: number;
+  perfectSessions: number; // 100% accuracy
+  speedDemonSessions: number; // 100+ WPM
+  totalCharsTyped: number;
+}
+
+const achievements: Achievement[] = [
+  { id: 'first-steps', name: 'First Steps', emoji: '👶', description: 'Complete your first typing session', condition: (s) => s.totalSessions >= 1 },
+  { id: 'getting-started', name: 'Getting Started', emoji: '🚀', description: 'Complete 5 typing sessions', condition: (s) => s.totalSessions >= 5 },
+  { id: 'dedicated', name: 'Dedicated Typist', emoji: '💪', description: 'Complete 25 typing sessions', condition: (s) => s.totalSessions >= 25 },
+  { id: 'centurion', name: 'Centurion', emoji: '🏛️', description: 'Complete 100 typing sessions', condition: (s) => s.totalSessions >= 100 },
+  { id: 'speed-50', name: 'Warming Up', emoji: '🔥', description: 'Reach 50 WPM', condition: (s) => s.bestWpm >= 50 },
+  { id: 'speed-75', name: 'Getting Fast', emoji: '⚡', description: 'Reach 75 WPM', condition: (s) => s.bestWpm >= 75 },
+  { id: 'speed-100', name: 'Speed Demon', emoji: '👹', description: 'Reach 100 WPM', condition: (s) => s.bestWpm >= 100 },
+  { id: 'speed-150', name: 'Lightning Fingers', emoji: '🌩️', description: 'Reach 150 WPM', condition: (s) => s.bestWpm >= 150 },
+  { id: 'perfectionist', name: 'Perfectionist', emoji: '✨', description: 'Get 100% accuracy in a session', condition: (s) => s.perfectSessions >= 1 },
+  { id: 'flawless-5', name: 'Flawless Five', emoji: '💎', description: 'Get 100% accuracy 5 times', condition: (s) => s.perfectSessions >= 5 },
+  { id: 'streak-3', name: 'On a Roll', emoji: '🎯', description: '3 day practice streak', condition: (s) => s.longestStreak >= 3 },
+  { id: 'streak-7', name: 'Weekly Warrior', emoji: '🗓️', description: '7 day practice streak', condition: (s) => s.longestStreak >= 7 },
+  { id: 'streak-30', name: 'Monthly Master', emoji: '📅', description: '30 day practice streak', condition: (s) => s.longestStreak >= 30 },
+  { id: 'marathon', name: 'Marathon Typist', emoji: '🏃', description: 'Type 10,000 characters total', condition: (s) => s.totalCharsTyped >= 10000 },
+  { id: 'novelist', name: 'Novelist', emoji: '📚', description: 'Type 50,000 characters total', condition: (s) => s.totalCharsTyped >= 50000 },
+];
+
+function getAchievementStats(): AchievementStats {
+  if (typeof window === 'undefined') return { totalSessions: 0, bestWpm: 0, bestAccuracy: 0, currentStreak: 0, longestStreak: 0, perfectSessions: 0, speedDemonSessions: 0, totalCharsTyped: 0 };
+  try {
+    return JSON.parse(localStorage.getItem('codetype-achievement-stats') || '{"totalSessions":0,"bestWpm":0,"bestAccuracy":0,"currentStreak":0,"longestStreak":0,"perfectSessions":0,"speedDemonSessions":0,"totalCharsTyped":0}');
+  } catch { return { totalSessions: 0, bestWpm: 0, bestAccuracy: 0, currentStreak: 0, longestStreak: 0, perfectSessions: 0, speedDemonSessions: 0, totalCharsTyped: 0 }; }
+}
+
+function updateAchievementStats(wpm: number, accuracy: number, charsTyped: number, streak: StreakData): AchievementStats {
+  const stats = getAchievementStats();
+  const updated: AchievementStats = {
+    totalSessions: stats.totalSessions + 1,
+    bestWpm: Math.max(stats.bestWpm, wpm),
+    bestAccuracy: Math.max(stats.bestAccuracy, accuracy),
+    currentStreak: streak.currentStreak,
+    longestStreak: Math.max(stats.longestStreak, streak.longestStreak),
+    perfectSessions: stats.perfectSessions + (accuracy === 100 ? 1 : 0),
+    speedDemonSessions: stats.speedDemonSessions + (wpm >= 100 ? 1 : 0),
+    totalCharsTyped: stats.totalCharsTyped + charsTyped,
+  };
+  localStorage.setItem('codetype-achievement-stats', JSON.stringify(updated));
+  return updated;
+}
+
+function getUnlockedAchievements(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    return JSON.parse(localStorage.getItem('codetype-unlocked-achievements') || '[]');
+  } catch { return []; }
+}
+
+function saveUnlockedAchievements(ids: string[]) {
+  localStorage.setItem('codetype-unlocked-achievements', JSON.stringify(ids));
+}
+
+function checkNewAchievements(stats: AchievementStats, currentUnlocked: string[]): Achievement[] {
+  const newlyUnlocked: Achievement[] = [];
+  for (const achievement of achievements) {
+    if (!currentUnlocked.includes(achievement.id) && achievement.condition(stats)) {
+      newlyUnlocked.push(achievement);
+    }
+  }
+  return newlyUnlocked;
 }
 
 function getWpmHistory(): WpmEntry[] {
@@ -193,6 +275,14 @@ export default function Home() {
   const [customName, setCustomName] = useState('');
   const [savedCustomSnippets, setSavedCustomSnippets] = useState<{ code: string; name: string }[]>([]);
   const [isCustomMode, setIsCustomMode] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [achievementStats, setAchievementStats] = useState<AchievementStats>({ totalSessions: 0, bestWpm: 0, bestAccuracy: 0, currentStreak: 0, longestStreak: 0, perfectSessions: 0, speedDemonSessions: 0, totalCharsTyped: 0 });
+  const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
+  const [newAchievement, setNewAchievement] = useState<Achievement | null>(null);
+  const [dailyMode, setDailyMode] = useState(false);
+  const [dailyBest, setDailyBest] = useState<DailyBest | null>(null);
+  const [showDailyComplete, setShowDailyComplete] = useState(false);
+  const [dailyResult, setDailyResult] = useState<{ wpm: number; accuracy: number; isNewBest: boolean } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -209,7 +299,7 @@ export default function Home() {
     }
   }, []);
 
-  // Load leaderboard, saved name, streak, WPM history, sound preference, and custom snippets
+  // Load leaderboard, saved name, streak, WPM history, sound preference, custom snippets, achievements, and daily best
   useEffect(() => {
     fetchLeaderboard();
     const savedName = localStorage.getItem('codetype-name');
@@ -218,6 +308,9 @@ export default function Home() {
     setWpmHistory(getWpmHistory());
     setSoundState(getSoundEnabled());
     setSavedCustomSnippets(getSavedCustomSnippets());
+    setAchievementStats(getAchievementStats());
+    setUnlockedAchievements(getUnlockedAchievements());
+    setDailyBest(getDailyBest());
   }, [fetchLeaderboard]);
 
   // Submit score to leaderboard
@@ -267,7 +360,32 @@ export default function Home() {
     setIsNewHighScore(false);
     setTimedEnded(false);
     setKeyHeatmap({});
+    setDailyMode(false);
+    setShowDailyComplete(false);
+    setDailyResult(null);
   }, [language, difficulty]);
+
+  // Start Daily Challenge
+  const startDailyChallenge = useCallback(() => {
+    const dailySnippet = getDailyChallenge();
+    setSnippet(dailySnippet);
+    setInput('');
+    setStartTime(null);
+    setEndTime(null);
+    setWpm(0);
+    setAccuracy(100);
+    setIsNewHighScore(false);
+    setTimedEnded(false);
+    setKeyHeatmap({});
+    setDailyMode(true);
+    setTimedMode(null);
+    setIsCustomMode(false);
+    setShowDailyComplete(false);
+    setDailyResult(null);
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimeRemaining(null);
+    setTimeout(() => containerRef.current?.focus(), 0);
+  }, []);
 
   // Start timed challenge
   const startTimedChallenge = useCallback((seconds: TimedMode) => {
@@ -370,6 +488,19 @@ export default function Home() {
         mode: `${timedMode}s`
       };
       setWpmHistory(addWpmEntry(entry));
+
+      // Update achievement stats and check for new achievements
+      const updatedStats = updateAchievementStats(finalWpm, finalAcc, timedStats.totalChars, newStreak);
+      setAchievementStats(updatedStats);
+      const newlyUnlocked = checkNewAchievements(updatedStats, unlockedAchievements);
+      if (newlyUnlocked.length > 0) {
+        const allUnlocked = [...unlockedAchievements, ...newlyUnlocked.map(a => a.id)];
+        setUnlockedAchievements(allUnlocked);
+        saveUnlockedAchievements(allUnlocked);
+        // Show first new achievement
+        setNewAchievement(newlyUnlocked[0]);
+        setTimeout(() => setNewAchievement(null), 4000);
+      }
     }
   }, [timedEnded]);
 
@@ -488,17 +619,43 @@ export default function Home() {
           }
         }
 
+        // Handle Daily Challenge completion
+        if (dailyMode) {
+          const currentBest = dailyBest;
+          const isNewBest = !currentBest || finalWpm > currentBest.wpm || 
+                           (finalWpm === currentBest.wpm && finalAccuracy > currentBest.accuracy);
+          if (isNewBest) {
+            const newBest = saveDailyBest(finalWpm, finalAccuracy, snippet.id);
+            setDailyBest(newBest);
+          }
+          setDailyResult({ wpm: finalWpm, accuracy: finalAccuracy, isNewBest });
+          setShowDailyComplete(true);
+        }
+
         // Add to WPM history
         const entry: WpmEntry = {
           wpm: finalWpm,
           accuracy: finalAccuracy,
           date: new Date().toISOString(),
-          mode: 'practice'
+          mode: dailyMode ? 'daily' : 'practice'
         };
         setWpmHistory(addWpmEntry(entry));
+
+        // Update achievement stats and check for new achievements
+        const updatedStats = updateAchievementStats(finalWpm, finalAccuracy, snippet.code.length, newStreak);
+        setAchievementStats(updatedStats);
+        const newlyUnlocked = checkNewAchievements(updatedStats, unlockedAchievements);
+        if (newlyUnlocked.length > 0) {
+          const allUnlocked = [...unlockedAchievements, ...newlyUnlocked.map(a => a.id)];
+          setUnlockedAchievements(allUnlocked);
+          saveUnlockedAchievements(allUnlocked);
+          // Show first new achievement
+          setNewAchievement(newlyUnlocked[0]);
+          setTimeout(() => setNewAchievement(null), 4000);
+        }
       }
     }
-  }, [snippet, input, startTime, endTime, timedMode, timedEnded, language, highScore, soundEnabled]);
+  }, [snippet, input, startTime, endTime, timedMode, timedEnded, language, highScore, soundEnabled, unlockedAchievements, dailyMode, dailyBest]);
 
   const getCharState = (index: number): CharState => {
     if (index >= input.length) {
@@ -562,6 +719,156 @@ export default function Home() {
             )}
           </div>
         </div>
+        )}
+
+        {/* Daily Challenge Info Banner */}
+        {dailyMode && !showDailyComplete && (
+          <div className="w-full max-w-2xl mb-6 fade-in">
+            <div className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 border border-amber-500/30 rounded-2xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">📅</span>
+                  <div>
+                    <h3 className="text-amber-400 font-bold text-sm">DAILY CHALLENGE</h3>
+                    <p className="text-zinc-400 text-xs">{getDailyChallengeDate()}</p>
+                  </div>
+                </div>
+                {dailyBest ? (
+                  <div className="text-right">
+                    <p className="text-xs text-zinc-500">Today's Best</p>
+                    <p className="text-amber-400 font-bold">{dailyBest.wpm} WPM</p>
+                    <p className="text-xs text-zinc-500">{dailyBest.accuracy}% accuracy</p>
+                  </div>
+                ) : (
+                  <div className="text-right">
+                    <p className="text-xs text-zinc-400">No attempts yet!</p>
+                    <p className="text-amber-400/60 text-xs">Be the first today</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Daily Challenge Complete Modal */}
+        {showDailyComplete && dailyResult && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 fade-in">
+            <div className="bg-zinc-900 border border-zinc-700 rounded-3xl p-8 max-w-md w-full mx-4 text-center">
+              <div className="text-6xl mb-4">{dailyResult.isNewBest ? '🎉' : '✅'}</div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                {dailyResult.isNewBest ? 'New Personal Best!' : 'Challenge Complete!'}
+              </h2>
+              <p className="text-zinc-400 mb-6">{getDailyChallengeDate()}</p>
+              
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-zinc-800 rounded-xl p-4">
+                  <p className="text-3xl font-bold text-purple-400">{dailyResult.wpm}</p>
+                  <p className="text-xs text-zinc-500">WPM</p>
+                </div>
+                <div className="bg-zinc-800 rounded-xl p-4">
+                  <p className="text-3xl font-bold text-green-400">{dailyResult.accuracy}%</p>
+                  <p className="text-xs text-zinc-500">Accuracy</p>
+                </div>
+              </div>
+              
+              {dailyBest && !dailyResult.isNewBest && (
+                <p className="text-zinc-500 text-sm mb-4">
+                  Today's best: {dailyBest.wpm} WPM ({dailyBest.accuracy}%)
+                </p>
+              )}
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={startDailyChallenge}
+                  className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-500 rounded-xl text-white font-medium transition-all"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={() => { setShowDailyComplete(false); startNewGame(); }}
+                  className="flex-1 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-white font-medium transition-all"
+                >
+                  Practice Mode
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Achievement Unlock Toast */}
+        {newAchievement && (
+          <div className="fixed top-4 right-4 z-50 animate-bounce-in">
+            <div className="bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/40 rounded-2xl p-4 shadow-xl backdrop-blur-sm">
+              <div className="flex items-center gap-3">
+                <span className="text-4xl">{newAchievement.emoji}</span>
+                <div>
+                  <p className="text-yellow-400 font-bold text-sm">🏆 Achievement Unlocked!</p>
+                  <p className="text-white font-semibold">{newAchievement.name}</p>
+                  <p className="text-zinc-400 text-xs">{newAchievement.description}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Achievements Panel - hidden in focus mode */}
+        {showAchievements && !focusMode && (
+          <div className="w-full max-w-2xl mb-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 fade-in">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <span>🏆</span> Achievements
+              <span className="text-sm text-zinc-500 font-normal">
+                ({unlockedAchievements.length}/{achievements.length})
+              </span>
+            </h3>
+            
+            {/* Stats Summary */}
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              <div className="bg-zinc-800/50 rounded-lg p-2 text-center">
+                <div className="text-lg font-bold text-purple-400">{achievementStats.totalSessions}</div>
+                <div className="text-xs text-zinc-500">Sessions</div>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-2 text-center">
+                <div className="text-lg font-bold text-green-400">{achievementStats.bestWpm}</div>
+                <div className="text-xs text-zinc-500">Best WPM</div>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-2 text-center">
+                <div className="text-lg font-bold text-pink-400">{achievementStats.perfectSessions}</div>
+                <div className="text-xs text-zinc-500">Perfect</div>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-2 text-center">
+                <div className="text-lg font-bold text-orange-400">{Math.round(achievementStats.totalCharsTyped / 1000)}k</div>
+                <div className="text-xs text-zinc-500">Chars</div>
+              </div>
+            </div>
+
+            {/* Achievement Grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 max-h-64 overflow-y-auto">
+              {achievements.map((achievement) => {
+                const isUnlocked = unlockedAchievements.includes(achievement.id);
+                return (
+                  <div
+                    key={achievement.id}
+                    className={`relative p-3 rounded-xl text-center transition-all ${
+                      isUnlocked
+                        ? 'bg-gradient-to-br from-yellow-500/10 to-amber-500/10 border border-yellow-500/30'
+                        : 'bg-zinc-800/30 border border-zinc-700/50 opacity-50'
+                    }`}
+                    title={`${achievement.name}: ${achievement.description}`}
+                  >
+                    <span className={`text-2xl ${isUnlocked ? '' : 'grayscale'}`}>{achievement.emoji}</span>
+                    <p className={`text-xs mt-1 truncate ${isUnlocked ? 'text-white' : 'text-zinc-500'}`}>
+                      {achievement.name}
+                    </p>
+                    {isUnlocked && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
+                        <span className="text-[8px]">✓</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Leaderboard - hidden in focus mode */}
@@ -740,14 +1047,24 @@ export default function Home() {
             {/* Mode Selector */}
             <div className="flex gap-1 p-1 bg-zinc-800/50 rounded-lg">
               <button
-                onClick={() => { setTimedMode(null); if (timerRef.current) clearInterval(timerRef.current); setTimeRemaining(null); setTimedEnded(false); startNewGame(); setTimeout(() => containerRef.current?.focus(), 0); }}
+                onClick={() => { setTimedMode(null); setDailyMode(false); if (timerRef.current) clearInterval(timerRef.current); setTimeRemaining(null); setTimedEnded(false); startNewGame(); setTimeout(() => containerRef.current?.focus(), 0); }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  !timedMode 
+                  !timedMode && !dailyMode 
                     ? 'bg-purple-600 text-white' 
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 Practice
+              </button>
+              <button
+                onClick={startDailyChallenge}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  dailyMode 
+                    ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white' 
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                📅 Daily
               </button>
               {[30, 60, 120].map((seconds) => (
                 <button
@@ -783,7 +1100,21 @@ export default function Home() {
             {/* Utility Buttons */}
             <div className="flex gap-1">
               <button
-                onClick={() => { setShowLeaderboard(!showLeaderboard); if (!showLeaderboard) fetchLeaderboard(); setShowHistory(false); setShowHeatmap(false); }}
+                onClick={() => { setShowAchievements(!showAchievements); setShowLeaderboard(false); setShowHistory(false); setShowHeatmap(false); }}
+                className={`p-2 rounded-lg text-sm transition-all relative ${
+                  showAchievements ? 'bg-yellow-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title={`Achievements (${unlockedAchievements.length}/${achievements.length})`}
+              >
+                🎖️
+                {unlockedAchievements.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full text-[10px] font-bold text-black flex items-center justify-center">
+                    {unlockedAchievements.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => { setShowLeaderboard(!showLeaderboard); if (!showLeaderboard) fetchLeaderboard(); setShowHistory(false); setShowHeatmap(false); setShowAchievements(false); }}
                 className={`p-2 rounded-lg text-sm transition-all ${
                   showLeaderboard ? 'bg-purple-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                 }`}
@@ -792,7 +1123,7 @@ export default function Home() {
                 🏆
               </button>
               <button
-                onClick={() => { setShowHistory(!showHistory); setShowLeaderboard(false); setShowHeatmap(false); }}
+                onClick={() => { setShowHistory(!showHistory); setShowLeaderboard(false); setShowHeatmap(false); setShowAchievements(false); }}
                 className={`p-2 rounded-lg text-sm transition-all ${
                   showHistory ? 'bg-pink-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                 }`}
@@ -801,7 +1132,7 @@ export default function Home() {
                 📈
               </button>
               <button
-                onClick={() => { setShowHeatmap(!showHeatmap); setShowLeaderboard(false); setShowHistory(false); }}
+                onClick={() => { setShowHeatmap(!showHeatmap); setShowLeaderboard(false); setShowHistory(false); setShowAchievements(false); }}
                 className={`p-2 rounded-lg text-sm transition-all ${
                   showHeatmap ? 'bg-orange-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                 }`}
