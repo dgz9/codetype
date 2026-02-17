@@ -1514,6 +1514,48 @@ export default function Home() {
               {isNewHighScore && <span className="text-yellow-400 ml-2">★ Personal Best!</span>}
             </p>
             
+            {/* Mistakes Review */}
+            {accuracy < 100 && snippet && (() => {
+              const mistakes: { pos: number; expected: string; typed: string; context: string }[] = [];
+              for (let i = 0; i < input.length; i++) {
+                if (input[i] !== snippet.code[i]) {
+                  const ctxStart = Math.max(0, i - 8);
+                  const ctxEnd = Math.min(snippet.code.length, i + 8);
+                  mistakes.push({
+                    pos: i,
+                    expected: snippet.code[i] === '\n' ? '↵' : snippet.code[i] === ' ' ? '␣' : snippet.code[i],
+                    typed: input[i] === '\n' ? '↵' : input[i] === ' ' ? '␣' : input[i],
+                    context: snippet.code.slice(ctxStart, ctxEnd).replace(/\n/g, '↵')
+                  });
+                }
+              }
+              if (mistakes.length === 0) return null;
+              return (
+                <div className="mb-6 max-w-md mx-auto text-left">
+                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                      <span>🔍</span> Mistakes Review
+                      <span className="text-xs text-zinc-500 font-normal">({mistakes.length} error{mistakes.length !== 1 ? 's' : ''})</span>
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {mistakes.slice(0, 10).map((m, i) => (
+                        <div key={i} className="flex items-center gap-3 text-xs p-2 rounded-lg bg-zinc-800/50">
+                          <span className="text-zinc-500 w-8 text-right font-mono">:{m.pos + 1}</span>
+                          <code className="text-zinc-400 flex-1 font-mono truncate">{m.context}</code>
+                          <span className="text-red-400 font-mono px-1.5 py-0.5 bg-red-500/10 rounded">{m.typed}</span>
+                          <span className="text-zinc-600">→</span>
+                          <span className="text-green-400 font-mono px-1.5 py-0.5 bg-green-500/10 rounded">{m.expected}</span>
+                        </div>
+                      ))}
+                      {mistakes.length > 10 && (
+                        <p className="text-xs text-zinc-600 text-center">+{mistakes.length - 10} more mistakes</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+            
             {/* Submit to Leaderboard */}
             {accuracy >= 80 && !submitted && (
               <div className="mb-6 p-4 bg-zinc-800/50 rounded-xl max-w-sm mx-auto">
