@@ -199,6 +199,91 @@ export const snippets: Snippet[] = [
     difficulty: 'easy',
     code: `defer file.Close()`,
   },
+  // New snippets - Feb 2025
+  {
+    id: 'ts-fetch',
+    name: 'Fetch with Types',
+    language: 'typescript',
+    difficulty: 'medium',
+    code: `async function fetchUser(id: string): Promise<User> {
+  const res = await fetch(\`/api/users/\${id}\`);
+  if (!res.ok) throw new Error("Not found");
+  return res.json();
+}`,
+  },
+  {
+    id: 'py-listcomp',
+    name: 'List Comprehension',
+    language: 'python',
+    difficulty: 'easy',
+    code: `squares = [x ** 2 for x in range(10) if x % 2 == 0]`,
+  },
+  {
+    id: 'rust-option',
+    name: 'Option Handling',
+    language: 'rust',
+    difficulty: 'medium',
+    code: `fn find_user(id: u64) -> Option<User> {
+    users.iter().find(|u| u.id == id).cloned()
+}`,
+  },
+  {
+    id: 'js-destructure',
+    name: 'Nested Destructuring',
+    language: 'javascript',
+    difficulty: 'medium',
+    code: `const { data: { users = [] }, error } = await response.json();`,
+  },
+  {
+    id: 'go-map',
+    name: 'Map Iteration',
+    language: 'go',
+    difficulty: 'medium',
+    code: `for key, value := range config {
+    fmt.Printf("%s = %s\\n", key, value)
+}`,
+  },
+  {
+    id: 'ts-generic',
+    name: 'Generic Function',
+    language: 'typescript',
+    difficulty: 'hard',
+    code: `function groupBy<T, K extends string>(items: T[], key: (item: T) => K): Record<K, T[]> {
+  return items.reduce((acc, item) => {
+    const k = key(item);
+    (acc[k] ??= []).push(item);
+    return acc;
+  }, {} as Record<K, T[]>);
+}`,
+  },
+  {
+    id: 'py-decorator',
+    name: 'Retry Decorator',
+    language: 'python',
+    difficulty: 'hard',
+    code: `def retry(max_attempts=3):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for i in range(max_attempts):
+                try:
+                    return func(*args, **kwargs)
+                except Exception:
+                    if i == max_attempts - 1:
+                        raise
+        return wrapper
+    return decorator`,
+  },
+  {
+    id: 'rust-iter',
+    name: 'Iterator Chain',
+    language: 'rust',
+    difficulty: 'hard',
+    code: `let total: f64 = orders
+    .iter()
+    .filter(|o| o.status == Status::Complete)
+    .map(|o| o.items.iter().map(|i| i.price).sum::<f64>())
+    .sum();`,
+  },
 ];
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
