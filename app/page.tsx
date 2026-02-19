@@ -275,6 +275,7 @@ export default function Home() {
   const [customName, setCustomName] = useState('');
   const [savedCustomSnippets, setSavedCustomSnippets] = useState<{ code: string; name: string }[]>([]);
   const [isCustomMode, setIsCustomMode] = useState(false);
+  const [liveWpmHistory, setLiveWpmHistory] = useState<number[]>([]);
   const [showAchievements, setShowAchievements] = useState(false);
   const [achievementStats, setAchievementStats] = useState<AchievementStats>({ totalSessions: 0, bestWpm: 0, bestAccuracy: 0, currentStreak: 0, longestStreak: 0, perfectSessions: 0, speedDemonSessions: 0, totalCharsTyped: 0 });
   const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
@@ -360,6 +361,7 @@ export default function Home() {
     setIsNewHighScore(false);
     setTimedEnded(false);
     setKeyHeatmap({});
+    setLiveWpmHistory([]);
     setDailyMode(false);
     setShowDailyComplete(false);
     setDailyResult(null);
@@ -539,6 +541,13 @@ export default function Home() {
     if (e.key.length === 1) {
       const newInput = input + e.key;
       setInput(newInput);
+      
+      // Track live WPM (every 5 chars)
+      if (startTime && newInput.length % 5 === 0) {
+        const elapsed = (Date.now() - startTime) / 60000;
+        const currentWpm = Math.round((newInput.length / 5) / elapsed);
+        setLiveWpmHistory(prev => [...prev.slice(-19), currentWpm]);
+      }
       
       // Track key accuracy for heatmap
       const expectedKey = snippet.code[input.length];
@@ -1411,21 +1420,52 @@ export default function Home() {
 
         {/* Stats */}
         {startTime && (
-          <div className="grid grid-cols-3 gap-4 mt-6 w-full max-w-md">
-            <div className="stat-card rounded-xl p-4 text-center">
-              <div className="text-3xl font-bold text-purple-400">{wpm || '—'}</div>
-              <div className="text-xs text-zinc-500 mt-1">WPM</div>
-            </div>
-            <div className="stat-card rounded-xl p-4 text-center">
-              <div className={`text-3xl font-bold ${accuracy >= 95 ? 'text-green-400' : accuracy >= 80 ? 'text-yellow-400' : 'text-red-400'}`}>
-                {accuracy}%
+          <div className="w-full max-w-md mt-6 space-y-3">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="stat-card rounded-xl p-4 text-center">
+                <div className="text-3xl font-bold text-purple-400">{wpm || '—'}</div>
+                <div className="text-xs text-zinc-500 mt-1">WPM</div>
               </div>
-              <div className="text-xs text-zinc-500 mt-1">Accuracy</div>
+              <div className="stat-card rounded-xl p-4 text-center">
+                <div className={`text-3xl font-bold ${accuracy >= 95 ? 'text-green-400' : accuracy >= 80 ? 'text-yellow-400' : 'text-red-400'}`}>
+                  {accuracy}%
+                </div>
+                <div className="text-xs text-zinc-500 mt-1">Accuracy</div>
+              </div>
+              <div className="stat-card rounded-xl p-4 text-center">
+                <div className="text-3xl font-bold text-pink-400">{progress}%</div>
+                <div className="text-xs text-zinc-500 mt-1">Complete</div>
+              </div>
             </div>
-            <div className="stat-card rounded-xl p-4 text-center">
-              <div className="text-3xl font-bold text-pink-400">{progress}%</div>
-              <div className="text-xs text-zinc-500 mt-1">Complete</div>
-            </div>
+            {/* Live WPM Sparkline */}
+            {liveWpmHistory.length >= 2 && (
+              <div className="stat-card rounded-xl p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-zinc-500">Live WPM</span>
+                  <span className="text-xs text-purple-400 font-medium">{liveWpmHistory[liveWpmHistory.length - 1]} WPM</span>
+                </div>
+                <div className="h-8 flex items-end gap-px">
+                  {(() => {
+                    const max = Math.max(...liveWpmHistory, 1);
+                    const min = Math.min(...liveWpmHistory);
+                    return liveWpmHistory.map((w, i) => {
+                      const height = max === min ? 50 : ((w - min) / (max - min)) * 100;
+                      const isLast = i === liveWpmHistory.length - 1;
+                      return (
+                        <div
+                          key={i}
+                          className={`flex-1 rounded-t transition-all ${
+                            isLast ? 'bg-purple-400' : w >= (liveWpmHistory[i - 1] || 0) ? 'bg-green-500/50' : 'bg-red-500/40'
+                          }`}
+                          style={{ height: `${Math.max(height, 8)}%` }}
+                          title={`${w} WPM`}
+                        />
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
