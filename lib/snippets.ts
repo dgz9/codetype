@@ -1,4 +1,4 @@
-export type Language = 'javascript' | 'typescript' | 'python' | 'rust' | 'go';
+export type Language = 'javascript' | 'typescript' | 'python' | 'rust' | 'go' | 'c';
 
 export interface Snippet {
   id: string;
@@ -199,6 +199,79 @@ export const snippets: Snippet[] = [
     difficulty: 'easy',
     code: `defer file.Close()`,
   },
+  // C
+  {
+    id: 'c-1',
+    name: 'Struct Definition',
+    language: 'c',
+    difficulty: 'easy',
+    code: `struct Point {
+    int x;
+    int y;
+};`,
+  },
+  {
+    id: 'c-2',
+    name: 'Malloc & Free',
+    language: 'c',
+    difficulty: 'medium',
+    code: `int *arr = (int *)malloc(n * sizeof(int));
+if (arr == NULL) return -1;
+free(arr);`,
+  },
+  {
+    id: 'c-3',
+    name: 'Linked List Node',
+    language: 'c',
+    difficulty: 'medium',
+    code: `struct Node {
+    int data;
+    struct Node *next;
+};
+
+struct Node *new_node(int val) {
+    struct Node *node = malloc(sizeof(struct Node));
+    node->data = val;
+    node->next = NULL;
+    return node;
+}`,
+  },
+  {
+    id: 'c-4',
+    name: 'String Copy',
+    language: 'c',
+    difficulty: 'easy',
+    code: `char dest[256];
+strncpy(dest, src, sizeof(dest) - 1);
+dest[sizeof(dest) - 1] = '\\0';`,
+  },
+  {
+    id: 'c-5',
+    name: 'File Read',
+    language: 'c',
+    difficulty: 'medium',
+    code: `FILE *fp = fopen("data.txt", "r");
+if (fp == NULL) {
+    perror("fopen");
+    return 1;
+}
+char buf[1024];
+while (fgets(buf, sizeof(buf), fp)) {
+    printf("%s", buf);
+}
+fclose(fp);`,
+  },
+  {
+    id: 'c-6',
+    name: 'Pointer Swap',
+    language: 'c',
+    difficulty: 'easy',
+    code: `void swap(int *a, int *b) {
+    int tmp = *a;
+    *a = *b;
+    *b = tmp;
+}`,
+  },
   // New snippets - Feb 2025
   {
     id: 'ts-fetch',
@@ -308,6 +381,7 @@ export const languages: { id: Language; name: string; color: string }[] = [
   { id: 'python', name: 'Python', color: '#3776ab' },
   { id: 'rust', name: 'Rust', color: '#dea584' },
   { id: 'go', name: 'Go', color: '#00add8' },
+  { id: 'c', name: 'C', color: '#555555' },
 ];
 
 // Daily Challenge - same snippet for everyone each day
