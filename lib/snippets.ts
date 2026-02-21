@@ -1,4 +1,4 @@
-export type Language = 'javascript' | 'typescript' | 'python' | 'rust' | 'go' | 'c';
+export type Language = 'javascript' | 'typescript' | 'python' | 'rust' | 'go' | 'c' | 'sql';
 
 export interface Snippet {
   id: string;
@@ -272,6 +272,70 @@ fclose(fp);`,
     *b = tmp;
 }`,
   },
+  // SQL - Easy
+  {
+    id: 'sql-1',
+    name: 'Select Where',
+    language: 'sql',
+    difficulty: 'easy',
+    code: `SELECT name, email FROM users WHERE active = true;`,
+  },
+  {
+    id: 'sql-2',
+    name: 'Insert Into',
+    language: 'sql',
+    difficulty: 'easy',
+    code: `INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com');`,
+  },
+  // SQL - Medium
+  {
+    id: 'sql-3',
+    name: 'Join Query',
+    language: 'sql',
+    difficulty: 'medium',
+    code: `SELECT u.name, o.total
+FROM users u
+INNER JOIN orders o ON u.id = o.user_id
+WHERE o.total > 100
+ORDER BY o.total DESC;`,
+  },
+  {
+    id: 'sql-4',
+    name: 'Group By Having',
+    language: 'sql',
+    difficulty: 'medium',
+    code: `SELECT category, COUNT(*) as cnt, AVG(price) as avg_price
+FROM products
+GROUP BY category
+HAVING COUNT(*) > 5
+ORDER BY avg_price DESC;`,
+  },
+  // SQL - Hard
+  {
+    id: 'sql-5',
+    name: 'Window Function',
+    language: 'sql',
+    difficulty: 'hard',
+    code: `SELECT name, department, salary,
+  RANK() OVER (PARTITION BY department ORDER BY salary DESC) as rank,
+  AVG(salary) OVER (PARTITION BY department) as dept_avg
+FROM employees
+WHERE hire_date >= '2024-01-01';`,
+  },
+  {
+    id: 'sql-6',
+    name: 'CTE Recursive',
+    language: 'sql',
+    difficulty: 'hard',
+    code: `WITH RECURSIVE tree AS (
+  SELECT id, name, parent_id, 0 AS depth
+  FROM categories WHERE parent_id IS NULL
+  UNION ALL
+  SELECT c.id, c.name, c.parent_id, t.depth + 1
+  FROM categories c JOIN tree t ON c.parent_id = t.id
+)
+SELECT * FROM tree ORDER BY depth, name;`,
+  },
   // New snippets - Feb 2025
   {
     id: 'ts-fetch',
@@ -382,6 +446,7 @@ export const languages: { id: Language; name: string; color: string }[] = [
   { id: 'rust', name: 'Rust', color: '#dea584' },
   { id: 'go', name: 'Go', color: '#00add8' },
   { id: 'c', name: 'C', color: '#555555' },
+  { id: 'sql', name: 'SQL', color: '#e48e00' },
 ];
 
 // Daily Challenge - same snippet for everyone each day
