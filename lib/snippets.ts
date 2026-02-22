@@ -1,4 +1,4 @@
-export type Language = 'javascript' | 'typescript' | 'python' | 'rust' | 'go' | 'c' | 'sql';
+export type Language = 'javascript' | 'typescript' | 'python' | 'rust' | 'go' | 'c' | 'sql' | 'html';
 
 export interface Snippet {
   id: string;
@@ -337,6 +337,100 @@ WHERE hire_date >= '2024-01-01';`,
 SELECT * FROM tree ORDER BY depth, name;`,
   },
   // New snippets - Feb 2025
+  // HTML/CSS - Easy
+  {
+    id: 'html-1',
+    name: 'Link Tag',
+    language: 'html',
+    difficulty: 'easy',
+    code: `<a href="https://example.com" target="_blank">Visit Site</a>`,
+  },
+  {
+    id: 'html-2',
+    name: 'Image Tag',
+    language: 'html',
+    difficulty: 'easy',
+    code: `<img src="/logo.png" alt="Company Logo" width="200" />`,
+  },
+  {
+    id: 'html-3',
+    name: 'Unordered List',
+    language: 'html',
+    difficulty: 'easy',
+    code: `<ul class="nav-links">
+  <li><a href="/">Home</a></li>
+  <li><a href="/about">About</a></li>
+  <li><a href="/contact">Contact</a></li>
+</ul>`,
+  },
+  // HTML/CSS - Medium
+  {
+    id: 'html-4',
+    name: 'Flexbox Center',
+    language: 'html',
+    difficulty: 'medium',
+    code: `.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  gap: 1rem;
+}`,
+  },
+  {
+    id: 'html-5',
+    name: 'Form Input',
+    language: 'html',
+    difficulty: 'medium',
+    code: `<form method="POST" action="/api/submit">
+  <label for="email">Email</label>
+  <input type="email" id="email" name="email" required />
+  <button type="submit">Subscribe</button>
+</form>`,
+  },
+  {
+    id: 'html-6',
+    name: 'CSS Grid Layout',
+    language: 'html',
+    difficulty: 'medium',
+    code: `.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  padding: 2rem;
+}`,
+  },
+  // HTML/CSS - Hard
+  {
+    id: 'html-7',
+    name: 'Media Query',
+    language: 'html',
+    difficulty: 'hard',
+    code: `@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+  .main-content {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+}`,
+  },
+  {
+    id: 'html-8',
+    name: 'CSS Animation',
+    language: 'html',
+    difficulty: 'hard',
+    code: `@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+  animation: fadeIn 0.3s ease-out forwards;
+}`,
+  },
+  // New snippets - Feb 2025
   {
     id: 'ts-fetch',
     name: 'Fetch with Types',
@@ -447,6 +541,7 @@ export const languages: { id: Language; name: string; color: string }[] = [
   { id: 'go', name: 'Go', color: '#00add8' },
   { id: 'c', name: 'C', color: '#555555' },
   { id: 'sql', name: 'SQL', color: '#e48e00' },
+  { id: 'html', name: 'HTML/CSS', color: '#e44d26' },
 ];
 
 // Daily Challenge - same snippet for everyone each day
