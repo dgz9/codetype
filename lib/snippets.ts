@@ -1,4 +1,4 @@
-export type Language = 'javascript' | 'typescript' | 'python' | 'rust' | 'go' | 'c' | 'sql' | 'html';
+export type Language = 'javascript' | 'typescript' | 'python' | 'rust' | 'go' | 'c' | 'sql' | 'html' | 'java';
 
 export interface Snippet {
   id: string;
@@ -515,6 +515,111 @@ SELECT * FROM tree ORDER BY depth, name;`,
     .map(|o| o.items.iter().map(|i| i.price).sum::<f64>())
     .sum();`,
   },
+
+  // Java - Easy
+  {
+    id: 'java-1',
+    name: 'Hello World',
+    language: 'java',
+    difficulty: 'easy',
+    code: `System.out.println("Hello, World!");`,
+  },
+  {
+    id: 'java-2',
+    name: 'For Each Loop',
+    language: 'java',
+    difficulty: 'easy',
+    code: `for (String name : names) {
+    System.out.println(name);
+}`,
+  },
+  {
+    id: 'java-3',
+    name: 'ArrayList',
+    language: 'java',
+    difficulty: 'easy',
+    code: `List<String> items = new ArrayList<>();
+items.add("hello");`,
+  },
+  {
+    id: 'java-4',
+    name: 'String Format',
+    language: 'java',
+    difficulty: 'easy',
+    code: `String msg = String.format("Hello, %s! You are %d.", name, age);`,
+  },
+  // Java - Medium
+  {
+    id: 'java-5',
+    name: 'Stream Filter',
+    language: 'java',
+    difficulty: 'medium',
+    code: `List<User> active = users.stream()
+    .filter(u -> u.isActive())
+    .collect(Collectors.toList());`,
+  },
+  {
+    id: 'java-6',
+    name: 'Optional',
+    language: 'java',
+    difficulty: 'medium',
+    code: `Optional<User> user = findById(id);
+String name = user.map(User::getName).orElse("Unknown");`,
+  },
+  {
+    id: 'java-7',
+    name: 'HashMap',
+    language: 'java',
+    difficulty: 'medium',
+    code: `Map<String, Integer> counts = new HashMap<>();
+counts.merge(word, 1, Integer::sum);`,
+  },
+  {
+    id: 'java-8',
+    name: 'Try-with-resources',
+    language: 'java',
+    difficulty: 'medium',
+    code: `try (var reader = new BufferedReader(new FileReader(path))) {
+    String line;
+    while ((line = reader.readLine()) != null) {
+        process(line);
+    }
+}`,
+  },
+  // Java - Hard
+  {
+    id: 'java-9',
+    name: 'Generic Repository',
+    language: 'java',
+    difficulty: 'hard',
+    code: `public interface Repository<T, ID> {
+    Optional<T> findById(ID id);
+    List<T> findAll();
+    T save(T entity);
+    void deleteById(ID id);
+}`,
+  },
+  {
+    id: 'java-10',
+    name: 'Stream Grouping',
+    language: 'java',
+    difficulty: 'hard',
+    code: `Map<String, List<Order>> byStatus = orders.stream()
+    .collect(Collectors.groupingBy(
+        Order::getStatus,
+        Collectors.toList()
+    ));`,
+  },
+  {
+    id: 'java-11',
+    name: 'CompletableFuture',
+    language: 'java',
+    difficulty: 'hard',
+    code: `CompletableFuture<String> result = CompletableFuture
+    .supplyAsync(() -> fetchData(url))
+    .thenApply(data -> transform(data))
+    .exceptionally(ex -> "fallback");`,
+  },
 ];
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
@@ -542,6 +647,7 @@ export const languages: { id: Language; name: string; color: string }[] = [
   { id: 'c', name: 'C', color: '#555555' },
   { id: 'sql', name: 'SQL', color: '#e48e00' },
   { id: 'html', name: 'HTML/CSS', color: '#e44d26' },
+  { id: 'java', name: 'Java', color: '#b07219' },
 ];
 
 // Daily Challenge - same snippet for everyone each day
