@@ -1,4 +1,4 @@
-export type Language = 'javascript' | 'typescript' | 'python' | 'rust' | 'go' | 'c' | 'sql' | 'html' | 'java';
+export type Language = 'javascript' | 'typescript' | 'python' | 'rust' | 'go' | 'c' | 'sql' | 'html' | 'java' | 'kotlin';
 
 export interface Snippet {
   id: string;
@@ -620,6 +620,121 @@ counts.merge(word, 1, Integer::sum);`,
     .thenApply(data -> transform(data))
     .exceptionally(ex -> "fallback");`,
   },
+
+  // Kotlin - Easy
+  {
+    id: 'kt-1',
+    name: 'Data Class',
+    language: 'kotlin',
+    difficulty: 'easy',
+    code: `data class User(val name: String, val age: Int)`,
+  },
+  {
+    id: 'kt-2',
+    name: 'String Template',
+    language: 'kotlin',
+    difficulty: 'easy',
+    code: `val greeting = "Hello, \${user.name}!"`,
+  },
+  {
+    id: 'kt-3',
+    name: 'Null Safety',
+    language: 'kotlin',
+    difficulty: 'easy',
+    code: `val length = name?.length ?: 0`,
+  },
+  {
+    id: 'kt-4',
+    name: 'When Expression',
+    language: 'kotlin',
+    difficulty: 'easy',
+    code: `val result = when (x) {
+    1 -> "one"
+    2 -> "two"
+    else -> "other"
+}`,
+  },
+  // Kotlin - Medium
+  {
+    id: 'kt-5',
+    name: 'Extension Function',
+    language: 'kotlin',
+    difficulty: 'medium',
+    code: `fun String.isPalindrome(): Boolean =
+    this == this.reversed()`,
+  },
+  {
+    id: 'kt-6',
+    name: 'Collection Filter & Map',
+    language: 'kotlin',
+    difficulty: 'medium',
+    code: `val adults = users
+    .filter { it.age >= 18 }
+    .map { it.name.uppercase() }`,
+  },
+  {
+    id: 'kt-7',
+    name: 'Sealed Class',
+    language: 'kotlin',
+    difficulty: 'medium',
+    code: `sealed class Result<out T> {
+    data class Success<T>(val data: T) : Result<T>()
+    data class Error(val message: String) : Result<Nothing>()
+    object Loading : Result<Nothing>()
+}`,
+  },
+  {
+    id: 'kt-8',
+    name: 'Coroutine Launch',
+    language: 'kotlin',
+    difficulty: 'medium',
+    code: `suspend fun fetchUser(id: Int): User =
+    withContext(Dispatchers.IO) {
+        api.getUser(id)
+    }`,
+  },
+  // Kotlin - Hard
+  {
+    id: 'kt-9',
+    name: 'Flow Operator',
+    language: 'kotlin',
+    difficulty: 'hard',
+    code: `val updates = tickerFlow(1000)
+    .map { fetchLatestData() }
+    .distinctUntilChanged()
+    .catch { emit(CachedData) }
+    .flowOn(Dispatchers.IO)`,
+  },
+  {
+    id: 'kt-10',
+    name: 'DSL Builder',
+    language: 'kotlin',
+    difficulty: 'hard',
+    code: `fun html(init: HTML.() -> Unit): HTML {
+    val html = HTML()
+    html.init()
+    return html
+}
+
+val page = html {
+    head { title("Kotlin DSL") }
+    body { p("Hello, World!") }
+}`,
+  },
+  {
+    id: 'kt-11',
+    name: 'Delegation Pattern',
+    language: 'kotlin',
+    difficulty: 'hard',
+    code: `class LoggingList<T>(
+    private val inner: MutableList<T>
+) : MutableList<T> by inner {
+    override fun add(element: T): Boolean {
+        println("Adding \$element")
+        return inner.add(element)
+    }
+}`,
+  },
 ];
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
@@ -648,6 +763,7 @@ export const languages: { id: Language; name: string; color: string }[] = [
   { id: 'sql', name: 'SQL', color: '#e48e00' },
   { id: 'html', name: 'HTML/CSS', color: '#e44d26' },
   { id: 'java', name: 'Java', color: '#b07219' },
+  { id: 'kotlin', name: 'Kotlin', color: '#7f52ff' },
 ];
 
 // Daily Challenge - same snippet for everyone each day
