@@ -284,6 +284,7 @@ export default function Home() {
   const [dailyBest, setDailyBest] = useState<DailyBest | null>(null);
   const [showDailyComplete, setShowDailyComplete] = useState(false);
   const [dailyResult, setDailyResult] = useState<{ wpm: number; accuracy: number; isNewBest: boolean } | null>(null);
+  const [zenMode, setZenMode] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -1182,6 +1183,15 @@ export default function Home() {
                 {focusMode ? '👁️' : '🎯'}
               </button>
               <button
+                onClick={() => setZenMode(!zenMode)}
+                className={`p-2 rounded-lg text-sm transition-all ${
+                  zenMode ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title={zenMode ? 'Exit Zen Mode' : 'Zen Mode - Line by line typing'}
+              >
+                {zenMode ? '🧘' : '🪷'}
+              </button>
+              <button
                 onClick={() => { setShowCustomInput(!showCustomInput); setShowLeaderboard(false); setShowHistory(false); setShowHeatmap(false); }}
                 className={`p-2 rounded-lg text-sm transition-all ${
                   showCustomInput ? 'bg-cyan-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
@@ -1384,7 +1394,61 @@ export default function Home() {
 
           {/* Code Display */}
           <pre className="code-container text-lg sm:text-xl whitespace-pre-wrap break-all min-h-[120px]">
-            {snippet.code.split('').map((char, i) => (
+            {zenMode ? (() => {
+              // Find which line the cursor is on
+              const lines = snippet.code.split('\n');
+              let charsSoFar = 0;
+              let currentLineIdx = 0;
+              for (let l = 0; l < lines.length; l++) {
+                const lineLen = lines[l].length + (l < lines.length - 1 ? 1 : 0); // +1 for \n
+                if (input.length < charsSoFar + lineLen) {
+                  currentLineIdx = l;
+                  break;
+                }
+                charsSoFar += lineLen;
+                if (l === lines.length - 1) currentLineIdx = l;
+              }
+              // Show previous, current, and next line
+              const startLine = Math.max(0, currentLineIdx - 1);
+              const endLine = Math.min(lines.length - 1, currentLineIdx + 1);
+              let globalOffset = 0;
+              for (let l = 0; l < startLine; l++) globalOffset += lines[l].length + 1;
+              
+              const visibleChars: { char: string; globalIndex: number }[] = [];
+              for (let l = startLine; l <= endLine; l++) {
+                for (let c = 0; c < lines[l].length; c++) {
+                  visibleChars.push({ char: lines[l][c], globalIndex: globalOffset });
+                  globalOffset++;
+                }
+                if (l < endLine) {
+                  visibleChars.push({ char: '\n', globalIndex: globalOffset });
+                  globalOffset++;
+                }
+              }
+              
+              return (
+                <>
+                  {startLine > 0 && <span className="text-zinc-600 text-sm">··· {startLine} line{startLine > 1 ? 's' : ''} above ···{'\n'}</span>}
+                  {visibleChars.map((vc, i) => (
+                    <span key={i} className={`char-${getCharState(vc.globalIndex)} ${
+                      (() => {
+                        // Dim non-current lines
+                        let lineOfChar = 0;
+                        let count = 0;
+                        for (let l = 0; l < lines.length; l++) {
+                          count += lines[l].length + 1;
+                          if (vc.globalIndex < count) { lineOfChar = l; break; }
+                        }
+                        return lineOfChar !== currentLineIdx ? 'opacity-40' : '';
+                      })()
+                    }`}>
+                      {vc.char}
+                    </span>
+                  ))}
+                  {endLine < lines.length - 1 && <span className="text-zinc-600 text-sm">{'\n'}··· {lines.length - 1 - endLine} line{lines.length - 1 - endLine > 1 ? 's' : ''} below ···</span>}
+                </>
+              );
+            })() : snippet.code.split('').map((char, i) => (
               <span key={i} className={`char-${getCharState(i)}`}>
                 {char}
               </span>
