@@ -117,6 +117,30 @@ function checkNewAchievements(stats: AchievementStats, currentUnlocked: string[]
   return newlyUnlocked;
 }
 
+// Per-language best scores
+interface LanguageBest {
+  wpm: number;
+  accuracy: number;
+  date: string;
+}
+
+function getLanguageBests(): Record<string, LanguageBest> {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(localStorage.getItem('codetype-language-bests') || '{}');
+  } catch { return {}; }
+}
+
+function updateLanguageBest(lang: string, wpm: number, accuracy: number): Record<string, LanguageBest> {
+  const bests = getLanguageBests();
+  const current = bests[lang];
+  if (!current || wpm > current.wpm || (wpm === current.wpm && accuracy > current.accuracy)) {
+    bests[lang] = { wpm, accuracy, date: new Date().toISOString() };
+    localStorage.setItem('codetype-language-bests', JSON.stringify(bests));
+  }
+  return bests;
+}
+
 function getWpmHistory(): WpmEntry[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -285,6 +309,8 @@ export default function Home() {
   const [showDailyComplete, setShowDailyComplete] = useState(false);
   const [dailyResult, setDailyResult] = useState<{ wpm: number; accuracy: number; isNewBest: boolean } | null>(null);
   const [zenMode, setZenMode] = useState(false);
+  const [languageBests, setLanguageBests] = useState<Record<string, LanguageBest>>({});
+  const [showLanguageBests, setShowLanguageBests] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -313,6 +339,7 @@ export default function Home() {
     setAchievementStats(getAchievementStats());
     setUnlockedAchievements(getUnlockedAchievements());
     setDailyBest(getDailyBest());
+    setLanguageBests(getLanguageBests());
   }, [fetchLeaderboard]);
 
   // Submit score to leaderboard
@@ -627,6 +654,11 @@ export default function Home() {
             setIsNewHighScore(true);
             localStorage.setItem('codetype-highscore', JSON.stringify(newHigh));
           }
+        }
+
+        // Update per-language best scores
+        if (finalAccuracy >= 80 && snippet) {
+          setLanguageBests(updateLanguageBest(snippet.language, finalWpm, finalAccuracy));
         }
 
         // Handle Daily Challenge completion
@@ -1000,6 +1032,54 @@ export default function Home() {
           </div>
         )}
 
+        {/* Per-Language Best Scores - hidden in focus mode */}
+        {showLanguageBests && !focusMode && (
+          <div className="w-full max-w-lg mb-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 fade-in">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <span>🌐</span> Best Scores by Language
+            </h3>
+            {Object.keys(languageBests).length === 0 ? (
+              <p className="text-zinc-500 text-center py-4">Complete typing sessions with 80%+ accuracy to track per-language bests!</p>
+            ) : (
+              <div className="space-y-2">
+                {languages.map(lang => {
+                  const best = languageBests[lang.id];
+                  if (!best) return null;
+                  return (
+                    <div key={lang.id} className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50">
+                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: lang.color }} />
+                      <span className="text-white font-medium text-sm flex-1">{lang.name}</span>
+                      <div className="text-right">
+                        <span className="text-purple-400 font-bold">{best.wpm}</span>
+                        <span className="text-zinc-500 text-xs ml-1">WPM</span>
+                      </div>
+                      <div className="text-right min-w-[50px]">
+                        <span className={`font-medium text-sm ${best.accuracy >= 95 ? 'text-green-400' : best.accuracy >= 85 ? 'text-yellow-400' : 'text-orange-400'}`}>
+                          {best.accuracy}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Languages not yet attempted */}
+                {languages.filter(l => !languageBests[l.id]).length > 0 && (
+                  <div className="pt-2 border-t border-zinc-800">
+                    <p className="text-xs text-zinc-600 mb-2">Not yet attempted:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {languages.filter(l => !languageBests[l.id]).map(lang => (
+                        <span key={lang.id} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-zinc-800/50 text-xs text-zinc-500">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: lang.color, opacity: 0.4 }} />
+                          {lang.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Keyboard Heatmap - hidden in focus mode */}
         {showHeatmap && !focusMode && (
           <div className="w-full max-w-xl mb-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 fade-in">
@@ -1110,7 +1190,7 @@ export default function Home() {
             {/* Utility Buttons */}
             <div className="flex gap-1">
               <button
-                onClick={() => { setShowAchievements(!showAchievements); setShowLeaderboard(false); setShowHistory(false); setShowHeatmap(false); }}
+                onClick={() => { setShowAchievements(!showAchievements); setShowLeaderboard(false); setShowHistory(false); setShowHeatmap(false); setShowLanguageBests(false); }}
                 className={`p-2 rounded-lg text-sm transition-all relative ${
                   showAchievements ? 'bg-yellow-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                 }`}
@@ -1124,7 +1204,7 @@ export default function Home() {
                 )}
               </button>
               <button
-                onClick={() => { setShowLeaderboard(!showLeaderboard); if (!showLeaderboard) fetchLeaderboard(); setShowHistory(false); setShowHeatmap(false); setShowAchievements(false); }}
+                onClick={() => { setShowLeaderboard(!showLeaderboard); if (!showLeaderboard) fetchLeaderboard(); setShowHistory(false); setShowHeatmap(false); setShowAchievements(false); setShowLanguageBests(false); }}
                 className={`p-2 rounded-lg text-sm transition-all ${
                   showLeaderboard ? 'bg-purple-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                 }`}
@@ -1133,7 +1213,16 @@ export default function Home() {
                 🏆
               </button>
               <button
-                onClick={() => { setShowHistory(!showHistory); setShowLeaderboard(false); setShowHeatmap(false); setShowAchievements(false); }}
+                onClick={() => { setShowLanguageBests(!showLanguageBests); setShowLeaderboard(false); setShowHistory(false); setShowHeatmap(false); setShowAchievements(false); }}
+                className={`p-2 rounded-lg text-sm transition-all ${
+                  showLanguageBests ? 'bg-cyan-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title="Per-Language Best Scores"
+              >
+                🌐
+              </button>
+              <button
+                onClick={() => { setShowHistory(!showHistory); setShowLeaderboard(false); setShowHeatmap(false); setShowAchievements(false); setShowLanguageBests(false); }}
                 className={`p-2 rounded-lg text-sm transition-all ${
                   showHistory ? 'bg-pink-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                 }`}
@@ -1142,7 +1231,7 @@ export default function Home() {
                 📈
               </button>
               <button
-                onClick={() => { setShowHeatmap(!showHeatmap); setShowLeaderboard(false); setShowHistory(false); setShowAchievements(false); }}
+                onClick={() => { setShowHeatmap(!showHeatmap); setShowLeaderboard(false); setShowHistory(false); setShowAchievements(false); setShowLanguageBests(false); }}
                 className={`p-2 rounded-lg text-sm transition-all ${
                   showHeatmap ? 'bg-orange-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                 }`}
