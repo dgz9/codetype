@@ -542,6 +542,29 @@ export default function Home() {
     containerRef.current?.focus();
   }, [snippet]);
 
+  // Live WPM in browser tab title
+  useEffect(() => {
+    if (!startTime || endTime || timedEnded) {
+      document.title = 'CodeType - Typing Practice for Developers';
+      return;
+    }
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 60000;
+      if (elapsed > 0 && input.length > 0) {
+        const liveWpm = Math.round((input.length / 5) / elapsed);
+        const acc = snippet ? (() => {
+          let correct = 0;
+          for (let i = 0; i < input.length; i++) {
+            if (input[i] === snippet.code[i]) correct++;
+          }
+          return input.length > 0 ? Math.round((correct / input.length) * 100) : 100;
+        })() : 100;
+        document.title = `⌨️ ${liveWpm} WPM · ${acc}% — CodeType`;
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [startTime, endTime, timedEnded, input, snippet]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!snippet || endTime || timedEnded) return;
 
