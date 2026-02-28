@@ -1505,7 +1505,14 @@ export default function Home() {
           </div>
 
           {/* Code Display */}
-          <pre className="code-container text-lg sm:text-xl whitespace-pre-wrap break-all min-h-[120px]">
+          <pre className="code-container text-lg sm:text-xl whitespace-pre-wrap break-all min-h-[120px] relative flex">
+            {/* Line numbers */}
+            <span className="select-none pr-4 mr-4 border-r border-zinc-800 text-zinc-600 text-right text-sm leading-[1.75] flex-shrink-0" style={{ minWidth: '2.5rem' }}>
+              {snippet.code.split('\n').map((_, i) => (
+                <span key={i} className="block">{i + 1}</span>
+              ))}
+            </span>
+            <span className="flex-1">
             {zenMode ? (() => {
               // Find which line the cursor is on
               const lines = snippet.code.split('\n');
@@ -1565,6 +1572,7 @@ export default function Home() {
                 {char}
               </span>
             ))}
+            </span>
           </pre>
 
           {/* Progress Bar */}
