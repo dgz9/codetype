@@ -54,19 +54,30 @@ body {
 }
 
 .char-current {
+  position: relative;
+  color: var(--pending);
+}
+
+.char-current::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2.5px;
   background: var(--cursor);
-  color: white;
   border-radius: 2px;
-  animation: cursorPulse 1s ease-in-out infinite;
+  animation: caretBlink 1s step-end infinite;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.6), 0 0 20px rgba(168, 85, 247, 0.3);
 }
 
 .char-pending {
   color: var(--pending);
 }
 
-@keyframes cursorPulse {
+@keyframes caretBlink {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  50% { opacity: 0; }
 }
 
 /* Stats cards */
