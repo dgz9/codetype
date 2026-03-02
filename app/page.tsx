@@ -311,6 +311,8 @@ export default function Home() {
   const [zenMode, setZenMode] = useState(false);
   const [languageBests, setLanguageBests] = useState<Record<string, LanguageBest>>({});
   const [showLanguageBests, setShowLanguageBests] = useState(false);
+  const [wpmGoal, setWpmGoal] = useState<number | null>(null);
+  const [showGoalSetter, setShowGoalSetter] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -340,6 +342,8 @@ export default function Home() {
     setUnlockedAchievements(getUnlockedAchievements());
     setDailyBest(getDailyBest());
     setLanguageBests(getLanguageBests());
+    const savedGoal = localStorage.getItem('codetype-wpm-goal');
+    if (savedGoal) setWpmGoal(parseInt(savedGoal, 10));
   }, [fetchLeaderboard]);
 
   // Submit score to leaderboard
@@ -1304,6 +1308,20 @@ export default function Home() {
                 {zenMode ? '🧘' : '🪷'}
               </button>
               <button
+                onClick={() => setShowGoalSetter(!showGoalSetter)}
+                className={`p-2 rounded-lg text-sm transition-all relative ${
+                  showGoalSetter ? 'bg-amber-600 text-white' : wpmGoal ? 'bg-amber-600/30 text-amber-400' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title={wpmGoal ? `WPM Goal: ${wpmGoal}` : 'Set WPM Goal'}
+              >
+                🎯
+                {wpmGoal && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full text-[9px] font-bold text-black flex items-center justify-center">
+                    {wpmGoal}
+                  </span>
+                )}
+              </button>
+              <button
                 onClick={() => { setShowCustomInput(!showCustomInput); setShowLeaderboard(false); setShowHistory(false); setShowHeatmap(false); }}
                 className={`p-2 rounded-lg text-sm transition-all ${
                   showCustomInput ? 'bg-cyan-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
@@ -1373,6 +1391,64 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* WPM Goal Setter */}
+        {showGoalSetter && (
+          <div className="w-full max-w-md mb-6 bg-zinc-900/80 border border-amber-500/30 rounded-2xl p-4 fade-in">
+            <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+              <span>🎯</span> WPM Goal
+              <span className="text-xs text-zinc-500 font-normal">Track your target speed</span>
+            </h3>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {[30, 50, 75, 100, 125, 150].map(g => (
+                <button
+                  key={g}
+                  onClick={() => { setWpmGoal(g); localStorage.setItem('codetype-wpm-goal', String(g)); }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    wpmGoal === g
+                      ? 'bg-amber-500/30 text-amber-300 border border-amber-500/40'
+                      : 'bg-zinc-800/50 text-zinc-400 hover:text-white border border-zinc-700'
+                  }`}
+                >
+                  {g} WPM
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min={10}
+                max={300}
+                value={wpmGoal || ''}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (v > 0 && v <= 300) {
+                    setWpmGoal(v);
+                    localStorage.setItem('codetype-wpm-goal', String(v));
+                  }
+                }}
+                placeholder="Custom goal..."
+                className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500"
+              />
+              {wpmGoal && (
+                <button
+                  onClick={() => { setWpmGoal(null); localStorage.removeItem('codetype-wpm-goal'); }}
+                  className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-red-400 text-sm transition-all"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {wpmGoal && highScore && (
+              <p className="text-xs text-zinc-500 mt-2">
+                {highScore.wpm >= wpmGoal
+                  ? `✅ You've already hit ${wpmGoal} WPM! (Best: ${highScore.wpm})`
+                  : `${wpmGoal - highScore.wpm} WPM to go! (Best: ${highScore.wpm})`
+                }
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Custom Text Input Panel */}
         {showCustomInput && !focusMode && (
@@ -1621,6 +1697,25 @@ export default function Home() {
                 <div className="text-xs text-zinc-500 mt-1">Complete</div>
               </div>
             </div>
+            {/* WPM Goal Indicator */}
+            {wpmGoal && (
+              <div className="stat-card rounded-xl p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-amber-400 flex items-center gap-1">🎯 Goal: {wpmGoal} WPM</span>
+                  <span className={`text-xs font-medium ${wpm >= wpmGoal ? 'text-green-400' : 'text-zinc-400'}`}>
+                    {wpm > 0 ? (wpm >= wpmGoal ? '✅ Hit!' : `${wpmGoal - wpm} to go`) : '—'}
+                  </span>
+                </div>
+                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      wpm >= wpmGoal ? 'bg-green-500' : wpm >= wpmGoal * 0.8 ? 'bg-amber-500' : 'bg-purple-500'
+                    }`}
+                    style={{ width: `${Math.min((wpm / wpmGoal) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
             {/* Live WPM Sparkline */}
             {liveWpmHistory.length >= 2 && (
               <div className="stat-card rounded-xl p-3">
@@ -1628,9 +1723,23 @@ export default function Home() {
                   <span className="text-xs text-zinc-500">Live WPM</span>
                   <span className="text-xs text-purple-400 font-medium">{liveWpmHistory[liveWpmHistory.length - 1]} WPM</span>
                 </div>
-                <div className="h-8 flex items-end gap-px">
+                <div className="h-8 flex items-end gap-px relative">
+                  {/* Goal line overlay */}
+                  {wpmGoal && (() => {
+                    const max = Math.max(...liveWpmHistory, wpmGoal, 1);
+                    const min = Math.min(...liveWpmHistory);
+                    const goalPct = max === min ? 50 : ((wpmGoal - min) / (max - min)) * 100;
+                    if (goalPct < 0 || goalPct > 100) return null;
+                    return (
+                      <div
+                        className="absolute left-0 right-0 border-t border-dashed border-amber-500/50 z-10 pointer-events-none"
+                        style={{ bottom: `${goalPct}%` }}
+                        title={`Goal: ${wpmGoal} WPM`}
+                      />
+                    );
+                  })()}
                   {(() => {
-                    const max = Math.max(...liveWpmHistory, 1);
+                    const max = Math.max(...liveWpmHistory, wpmGoal || 1, 1);
                     const min = Math.min(...liveWpmHistory);
                     return liveWpmHistory.map((w, i) => {
                       const height = max === min ? 50 : ((w - min) / (max - min)) * 100;
