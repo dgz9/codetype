@@ -1054,6 +1054,48 @@ export default function Home() {
                   <span>← Older</span>
                   <span>Recent →</span>
                 </div>
+                
+                {/* Export Stats */}
+                <div className="mt-4 pt-3 border-t border-zinc-800 flex gap-2">
+                  <button
+                    onClick={() => {
+                      const headers = 'Date,WPM,Accuracy,Mode\n';
+                      const rows = wpmHistory.map(e => `${e.date},${e.wpm},${e.accuracy}%,${e.mode}`).join('\n');
+                      const blob = new Blob([headers + rows], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `codetype-stats-${new Date().toISOString().split('T')[0]}.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-sm font-medium transition-all"
+                  >
+                    📊 Export CSV
+                  </button>
+                  <button
+                    onClick={() => {
+                      const data = {
+                        exportDate: new Date().toISOString(),
+                        totalSessions: wpmHistory.length,
+                        avgWpm: Math.round(wpmHistory.reduce((s, e) => s + e.wpm, 0) / wpmHistory.length),
+                        bestWpm: Math.max(...wpmHistory.map(e => e.wpm)),
+                        avgAccuracy: Math.round(wpmHistory.reduce((s, e) => s + e.accuracy, 0) / wpmHistory.length),
+                        sessions: wpmHistory,
+                      };
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `codetype-stats-${new Date().toISOString().split('T')[0]}.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-zinc-700/50 hover:bg-zinc-700/80 text-zinc-300 text-sm font-medium transition-all"
+                  >
+                    📋 Export JSON
+                  </button>
+                </div>
               </>
             )}
           </div>
