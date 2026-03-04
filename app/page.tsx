@@ -309,6 +309,7 @@ export default function Home() {
   const [showDailyComplete, setShowDailyComplete] = useState(false);
   const [dailyResult, setDailyResult] = useState<{ wpm: number; accuracy: number; isNewBest: boolean } | null>(null);
   const [zenMode, setZenMode] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [languageBests, setLanguageBests] = useState<Record<string, LanguageBest>>({});
   const [showLanguageBests, setShowLanguageBests] = useState(false);
   const [wpmGoal, setWpmGoal] = useState<number | null>(null);
@@ -1350,6 +1351,15 @@ export default function Home() {
                 {zenMode ? '🧘' : '🪷'}
               </button>
               <button
+                onClick={() => setShowPreview(!showPreview)}
+                className={`p-2 rounded-lg text-sm font-medium transition-all ${
+                  showPreview ? 'bg-teal-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                }`}
+                title="Preview snippet before typing"
+              >
+                👁️
+              </button>
+              <button
                 onClick={() => setShowGoalSetter(!showGoalSetter)}
                 className={`p-2 rounded-lg text-sm transition-all relative ${
                   showGoalSetter ? 'bg-amber-600 text-white' : wpmGoal ? 'bg-amber-600/30 text-amber-400' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
@@ -1582,6 +1592,35 @@ export default function Home() {
             >
               ← Back to Library
             </button>
+          </div>
+        )}
+
+        {/* Code Preview Panel */}
+        {showPreview && snippet && !startTime && (
+          <div className="w-full max-w-3xl mb-6 fade-in">
+            <div className="bg-zinc-900/80 border border-teal-500/30 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-teal-400 flex items-center gap-2">
+                  👁️ Study Preview — {snippet.name}
+                  <span className="text-xs text-zinc-500 font-normal">Read through before you type</span>
+                </h3>
+                <button
+                  onClick={() => { setShowPreview(false); containerRef.current?.focus(); }}
+                  className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 rounded-lg text-white text-xs font-medium transition-all"
+                >
+                  Start Typing →
+                </button>
+              </div>
+              <pre className="text-sm text-zinc-300 whitespace-pre-wrap bg-zinc-800/50 rounded-xl p-4 font-mono leading-relaxed max-h-64 overflow-y-auto">
+                {snippet.code}
+              </pre>
+              <div className="flex items-center gap-4 mt-3 text-xs text-zinc-500">
+                <span>{snippet.code.length} chars</span>
+                <span>{snippet.code.split('\n').length} lines</span>
+                <span>{Math.ceil(snippet.code.length / 5)} words (approx)</span>
+                <span className="ml-auto text-teal-400/60">Preview disappears when you start typing</span>
+              </div>
+            </div>
           </div>
         )}
 
