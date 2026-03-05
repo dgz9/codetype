@@ -1997,9 +1997,88 @@ export default function Home() {
               <p className="text-green-400 text-sm mb-4">✓ Score submitted!</p>
             )}
             
+            {/* Typing Breakdown */}
+            {snippet && (() => {
+              // Calculate per-line stats
+              const lines = snippet.code.split('\n');
+              let charOffset = 0;
+              const lineStats = lines.map((line, lineIdx) => {
+                let correct = 0;
+                let incorrect = 0;
+                for (let c = 0; c < line.length; c++) {
+                  const globalIdx = charOffset + c;
+                  if (globalIdx < input.length) {
+                    if (input[globalIdx] === snippet.code[globalIdx]) correct++;
+                    else incorrect++;
+                  }
+                }
+                charOffset += line.length + 1; // +1 for \n
+                return { line: lineIdx + 1, text: line, correct, incorrect, total: line.length, accuracy: line.length > 0 ? Math.round((correct / line.length) * 100) : 100 };
+              });
+
+              // Weakest keys from heatmap
+              const weakKeys = Object.entries(keyHeatmap)
+                .filter(([, stats]) => stats.correct + stats.incorrect >= 2)
+                .map(([key, stats]) => ({ key, accuracy: Math.round((stats.correct / (stats.correct + stats.incorrect)) * 100), total: stats.correct + stats.incorrect }))
+                .sort((a, b) => a.accuracy - b.accuracy)
+                .slice(0, 5);
+
+              const problemLines = lineStats.filter(l => l.accuracy < 100 && l.total > 0).sort((a, b) => a.accuracy - b.accuracy).slice(0, 3);
+
+              if (weakKeys.length === 0 && problemLines.length === 0) return null;
+
+              return (
+                <div className="mt-6 max-w-md mx-auto text-left">
+                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                      <span>📊</span> Typing Breakdown
+                    </h4>
+
+                    {/* Weakest Keys */}
+                    {weakKeys.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-xs text-zinc-500 mb-2">Keys to practice:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {weakKeys.map(({ key, accuracy, total }) => (
+                            <div
+                              key={key}
+                              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-mono ${
+                                accuracy >= 80 ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400'
+                                : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                              }`}
+                              title={`${total} presses`}
+                            >
+                              <span className="font-bold text-lg">{key === ' ' ? '␣' : key.toUpperCase()}</span>
+                              <span className="text-xs opacity-70">{accuracy}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Problem Lines */}
+                    {problemLines.length > 0 && (
+                      <div>
+                        <p className="text-xs text-zinc-500 mb-2">Trickiest lines:</p>
+                        <div className="space-y-1.5">
+                          {problemLines.map(({ line, text, accuracy }) => (
+                            <div key={line} className="flex items-center gap-2 text-xs p-2 rounded-lg bg-zinc-800/50">
+                              <span className="text-zinc-500 w-6 text-right font-mono">L{line}</span>
+                              <code className="flex-1 text-zinc-400 font-mono truncate">{text.trim() || '(empty)'}</code>
+                              <span className={`font-medium ${accuracy >= 80 ? 'text-yellow-400' : 'text-red-400'}`}>{accuracy}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+            
             <button
               onClick={() => { setSubmitted(false); startNewGame(); }}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium text-white transition-all hover:scale-105"
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium text-white transition-all hover:scale-105 mt-4"
             >
               Next Snippet →
             </button>
