@@ -1909,6 +1909,17 @@ export default function Home() {
                 >
                   Practice Mode
                 </button>
+                <button
+                  onClick={async () => {
+                    const fw = timedStats.totalChars > 0 ? Math.round((timedStats.totalChars / 5) / ((timedMode || 60) / 60)) : 0;
+                    const fa = timedStats.totalChars > 0 ? Math.round((timedStats.correctChars / timedStats.totalChars) * 100) : 0;
+                    const text = `⌨️ CodeType - ${timedMode}s Challenge\n\n🚀 ${fw} WPM · ${fa}% accuracy\n📝 ${timedStats.snippetsCompleted} snippets completed\n⏱️ ${timedStats.totalChars} characters in ${timedMode}s\n${streak.currentStreak > 1 ? `🔥 ${streak.currentStreak} day streak` : ''}\n\nPractice at codetype-navy.vercel.app`;
+                    try { await navigator.clipboard.writeText(text.replace(/\n{3,}/g, '\n\n').trim()); } catch {}
+                  }}
+                  className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-medium text-white transition-all flex items-center gap-2"
+                >
+                  📤 Share
+                </button>
               </div>
             </div>
           );
@@ -2076,12 +2087,26 @@ export default function Home() {
               );
             })()}
             
-            <button
-              onClick={() => { setSubmitted(false); startNewGame(); }}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium text-white transition-all hover:scale-105 mt-4"
-            >
-              Next Snippet →
-            </button>
+            <div className="flex gap-3 justify-center mt-4">
+              <button
+                onClick={() => { setSubmitted(false); startNewGame(); }}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium text-white transition-all hover:scale-105"
+              >
+                Next Snippet →
+              </button>
+              <button
+                onClick={async () => {
+                  const lang = snippet ? languages.find(l => l.id === snippet.language)?.name || snippet.language : '';
+                  const text = `⌨️ CodeType Results\n\n🚀 ${wpm} WPM · ${accuracy}% accuracy\n💻 Language: ${lang}\n${wpmGoal ? (wpm >= wpmGoal ? `🎯 Goal ${wpmGoal} WPM ✅ Hit!` : `🎯 Goal ${wpmGoal} WPM (${wpmGoal - wpm} to go)`) : ''}\n${streak.currentStreak > 1 ? `🔥 ${streak.currentStreak} day streak` : ''}\n\nPractice at codetype-navy.vercel.app`;
+                  try {
+                    await navigator.clipboard.writeText(text.replace(/\n{3,}/g, '\n\n').trim());
+                  } catch {}
+                }}
+                className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-medium text-white transition-all hover:scale-105 flex items-center gap-2"
+              >
+                📤 Share Results
+              </button>
+            </div>
           </div>
         )}
 
