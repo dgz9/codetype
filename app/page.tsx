@@ -1778,6 +1778,27 @@ export default function Home() {
                 <div className="text-xs text-zinc-500 mt-1">Complete</div>
               </div>
             </div>
+            {/* Speed Zone Indicator */}
+            {wpm > 0 && !endTime && !timedEnded && (() => {
+              const zones = [
+                { min: 0, label: 'Cold Start', emoji: '🧊', color: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/30', text: 'text-blue-300' },
+                { min: 30, label: 'Warming Up', emoji: '🌤️', color: 'from-yellow-500/20 to-amber-500/20', border: 'border-yellow-500/30', text: 'text-yellow-300' },
+                { min: 50, label: 'In the Zone', emoji: '🔥', color: 'from-orange-500/20 to-red-500/20', border: 'border-orange-500/30', text: 'text-orange-300' },
+                { min: 80, label: 'On Fire', emoji: '⚡', color: 'from-pink-500/20 to-rose-500/20', border: 'border-pink-500/30', text: 'text-pink-300' },
+                { min: 100, label: 'Lightning', emoji: '🚀', color: 'from-purple-500/20 to-violet-500/20', border: 'border-purple-500/30', text: 'text-purple-300' },
+                { min: 130, label: 'Legendary', emoji: '👑', color: 'from-amber-500/30 to-yellow-500/30', border: 'border-amber-400/40', text: 'text-amber-300' },
+              ];
+              const zone = [...zones].reverse().find(z => wpm >= z.min) || zones[0];
+              return (
+                <div className={`stat-card rounded-xl p-3 bg-gradient-to-r ${zone.color} border ${zone.border} transition-all duration-500`}>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-lg">{zone.emoji}</span>
+                    <span className={`text-sm font-bold ${zone.text}`}>{zone.label}</span>
+                    <span className="text-lg">{zone.emoji}</span>
+                  </div>
+                </div>
+              );
+            })()}
             {/* WPM Goal Indicator */}
             {wpmGoal && (
               <div className="stat-card rounded-xl p-3">
