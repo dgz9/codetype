@@ -300,6 +300,8 @@ export default function Home() {
   const [savedCustomSnippets, setSavedCustomSnippets] = useState<{ code: string; name: string }[]>([]);
   const [isCustomMode, setIsCustomMode] = useState(false);
   const [liveWpmHistory, setLiveWpmHistory] = useState<number[]>([]);
+  const [perfectStreak, setPerfectStreak] = useState(0);
+  const [bestPerfectStreak, setBestPerfectStreak] = useState(0);
   const [showAchievements, setShowAchievements] = useState(false);
   const [achievementStats, setAchievementStats] = useState<AchievementStats>({ totalSessions: 0, bestWpm: 0, bestAccuracy: 0, currentStreak: 0, longestStreak: 0, perfectSessions: 0, speedDemonSessions: 0, totalCharsTyped: 0 });
   const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
@@ -395,6 +397,8 @@ export default function Home() {
     setTimedEnded(false);
     setKeyHeatmap({});
     setLiveWpmHistory([]);
+    setPerfectStreak(0);
+    setBestPerfectStreak(0);
     setDailyMode(false);
     setShowDailyComplete(false);
     setDailyResult(null);
@@ -609,6 +613,17 @@ export default function Home() {
       const expectedKey = snippet.code[input.length];
       const isCorrect = e.key === expectedKey;
       
+      // Update perfect streak
+      if (isCorrect) {
+        setPerfectStreak(prev => {
+          const newStreak = prev + 1;
+          setBestPerfectStreak(best => Math.max(best, newStreak));
+          return newStreak;
+        });
+      } else {
+        setPerfectStreak(0);
+      }
+
       // Update heatmap stats for the pressed key
       setKeyHeatmap(prev => {
         const keyLower = e.key.toLowerCase();
@@ -1778,6 +1793,31 @@ export default function Home() {
                 <div className="text-xs text-zinc-500 mt-1">Complete</div>
               </div>
             </div>
+            {/* Perfect Streak */}
+            {bestPerfectStreak > 0 && (
+              <div className={`stat-card rounded-xl p-3 transition-all ${
+                perfectStreak >= 20 ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20' : ''
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{perfectStreak >= 50 ? '💎' : perfectStreak >= 20 ? '🔥' : perfectStreak >= 10 ? '⚡' : '✨'}</span>
+                    <span className="text-xs text-zinc-400">Perfect Streak</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className={`text-lg font-bold ${
+                        perfectStreak >= 20 ? 'text-amber-400' : perfectStreak >= 10 ? 'text-purple-400' : 'text-zinc-300'
+                      }`}>{perfectStreak}</span>
+                      <span className="text-xs text-zinc-600 ml-1">now</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-yellow-400">{bestPerfectStreak}</span>
+                      <span className="text-xs text-zinc-600 ml-1">best</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Speed Zone Indicator */}
             {wpm > 0 && !endTime && !timedEnded && (() => {
               const zones = [
@@ -1914,6 +1954,12 @@ export default function Home() {
                 <p className="text-green-400 text-sm mb-6">✓ Score submitted!</p>
               )}
               
+              {bestPerfectStreak >= 5 && (
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <span>{bestPerfectStreak >= 50 ? '💎' : bestPerfectStreak >= 20 ? '🔥' : '⚡'}</span>
+                  <span className="text-amber-400 text-sm font-medium">Best Perfect Streak: {bestPerfectStreak} chars</span>
+                </div>
+              )}
               <p className="text-zinc-500 mb-6">
                 {timedStats.totalChars} characters typed in {timedMode} seconds
               </p>
@@ -1955,10 +2001,16 @@ export default function Home() {
             <p className="text-xl font-medium text-white mb-2">
               {isNewHighScore ? 'New High Score!' : accuracy >= 95 ? 'Perfect!' : accuracy >= 80 ? 'Nice work!' : 'Keep practicing!'}
             </p>
-            <p className="text-zinc-500 mb-4">
+            <p className="text-zinc-500 mb-2">
               {wpm} WPM with {accuracy}% accuracy
               {isNewHighScore && <span className="text-yellow-400 ml-2">★ Personal Best!</span>}
             </p>
+            {bestPerfectStreak >= 5 && (
+              <p className="text-amber-400/80 text-sm mb-4 flex items-center justify-center gap-1">
+                {bestPerfectStreak >= 50 ? '💎' : bestPerfectStreak >= 20 ? '🔥' : '⚡'} 
+                Best perfect streak: <span className="font-bold">{bestPerfectStreak}</span> consecutive correct chars
+              </p>
+            )}
             
             {/* Mistakes Review */}
             {accuracy < 100 && snippet && (() => {
