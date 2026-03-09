@@ -1660,6 +1660,24 @@ export default function Home() {
                 />
               )}
               <span className="text-zinc-400 text-sm font-medium">{snippet.name}</span>
+              {/* Estimated completion time */}
+              {!startTime && (() => {
+                const avgWpm = wpmHistory.length > 0
+                  ? Math.round(wpmHistory.reduce((s, e) => s + e.wpm, 0) / wpmHistory.length)
+                  : null;
+                const chars = snippet.code.length;
+                if (avgWpm && avgWpm > 0) {
+                  const estSeconds = Math.round((chars / 5) / avgWpm * 60);
+                  return (
+                    <span className="text-xs text-zinc-600 flex items-center gap-1" title={`Based on your avg ${avgWpm} WPM`}>
+                      ⏱️ ~{estSeconds < 60 ? `${estSeconds}s` : `${Math.floor(estSeconds / 60)}m ${estSeconds % 60}s`}
+                    </span>
+                  );
+                }
+                return (
+                  <span className="text-xs text-zinc-600">{chars} chars · {snippet.code.split('\n').length} lines</span>
+                );
+              })()}
             </div>
             {isCustomMode ? (
               <span className="px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
